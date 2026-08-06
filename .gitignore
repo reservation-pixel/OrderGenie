@@ -1,0 +1,31 @@
+# secrets & sensitive docs
+apidocs/
+api-curls.md
+.env
+.env.*
+!.env.example
+!.env.local.example
+
+# dependencies
+node_modules/
+
+# build output
+.next/
+dist/
+build/
+*.tsbuildinfo
+
+# logs
+npm-debug.log*
+*.log
+
+# OS
+.DS_Store
+
+# editors
+.vscode/
+.idea/
+
+# misc
+coverage/
+.turbo/

@@ -1,0 +1,147 @@
+'use client';
+
+import { useState } from 'react';
+import { TrendingDown, TrendingUp } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Badge } from '@/components/ui/badge';
+import { useOutletsOverview, useOutletComparison } from '@/hooks/useOutletsOverview';
+import { formatCurrency, formatNumber } from '@/lib/format';
+
+export default function OutletsPage() {
+  const [tab, setTab] = useState('list');
+  const { data: overview, isLoading: loadingOverview, isError: overviewError } = useOutletsOverview();
+  const { data: comparison, isLoading: loadingComparison, isError: comparisonError } = useOutletComparison();
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-xl font-semibold">Outlets</h1>
+      </div>
+
+      <Tabs value={tab} onValueChange={setTab}>
+        <TabsList>
+          <TabsTrigger value="list">Outlet List</TabsTrigger>
+          <TabsTrigger value="comparison">Comparison</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="list">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Today&apos;s Performance</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {loadingOverview ? (
+                <div className="space-y-2">
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <Skeleton key={i} className="h-10 w-full" />
+                  ))}
+                </div>
+              ) : overviewError || !overview ? (
+                <p className="text-sm text-destructive">Failed to load outlets.</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Outlet</TableHead>
+                        <TableHead>Brand</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead className="text-right">Today&apos;s Sales</TableHead>
+                        <TableHead className="text-right">Orders</TableHead>
+                        <TableHead className="text-right">Inventory Value</TableHead>
+                        <TableHead className="text-right">Open POs</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {overview.map((o) => (
+                        <TableRow key={o.id}>
+                          <TableCell className="font-medium">
+                            {o.name}
+                            {o.city && <span className="ml-1 text-xs text-muted-foreground">({o.city})</span>}
+                          </TableCell>
+                          <TableCell>{o.brand}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline">{o.outletType.replace('_', ' ')}</Badge>
+                          </TableCell>
+                          <TableCell className="text-right">{formatCurrency(o.todaySales)}</TableCell>
+                          <TableCell className="text-right">{formatNumber(o.todayOrders)}</TableCell>
+                          <TableCell className="text-right">{formatCurrency(o.inventoryValue)}</TableCell>
+                          <TableCell className="text-right">{formatNumber(o.openPurchaseOrders)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="comparison">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Outlet Comparison</CardTitle>
+              <CardDescription>Uses the selected date range. Not affected by the outlet filter — this view always compares across all outlets.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {loadingComparison ? (
+                <div className="space-y-2">
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <Skeleton key={i} className="h-10 w-full" />
+                  ))}
+                </div>
+              ) : comparisonError || !comparison ? (
+                <p className="text-sm text-destructive">Failed to load outlet comparison.</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Outlet</TableHead>
+                        <TableHead>Brand</TableHead>
+                        <TableHead className="text-right">Revenue</TableHead>
+                        <TableHead className="text-right">Orders</TableHead>
+                        <TableHead className="text-right">Avg Bill</TableHead>
+                        <TableHead className="text-right">Growth</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {[...comparison]
+                        .sort((a, b) => b.revenue - a.revenue)
+                        .map((o) => (
+                          <TableRow key={o.id}>
+                            <TableCell className="font-medium">{o.name}</TableCell>
+                            <TableCell>{o.brand}</TableCell>
+                            <TableCell className="text-right">{formatCurrency(o.revenue)}</TableCell>
+                            <TableCell className="text-right">{formatNumber(o.orders)}</TableCell>
+                            <TableCell className="text-right">{formatCurrency(o.averageBill)}</TableCell>
+                            <TableCell className="text-right">
+                              {o.growthPercent === null ? (
+                                '—'
+                              ) : (
+                                <span
+                                  className={`inline-flex items-center gap-1 ${
+                                    o.growthPercent >= 0 ? 'text-emerald-600' : 'text-red-600'
+                                  }`}
+                                >
+                                  {o.growthPercent >= 0 ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />}
+                                  {Math.abs(o.growthPercent).toFixed(1)}%
+                                </span>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}

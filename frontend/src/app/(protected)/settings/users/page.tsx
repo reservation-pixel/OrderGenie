@@ -1,0 +1,281 @@
+'use client';
+
+import { useState } from 'react';
+import { Plus } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useUsers, useCreateUser, useUpdateUser, useRoles } from '@/hooks/useSettings';
+import { useOutlets } from '@/hooks/useOutlets';
+import { formatDate } from '@/lib/format';
+import type { UserRow } from '@/types/api';
+
+export default function UsersPage() {
+  const { data: users, isLoading, isError } = useUsers();
+  const { data: roles } = useRoles();
+  const { data: outlets } = useOutlets();
+  const updateUser = useUpdateUser();
+  const [createOpen, setCreateOpen] = useState(false);
+  const [editing, setEditing] = useState<UserRow | null>(null);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-end">
+        <Button size="sm" onClick={() => setCreateOpen(true)}>
+          <Plus className="mr-1 h-4 w-4" />
+          Add User
+        </Button>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Users</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <Skeleton className="h-48 w-full" />
+          ) : isError || !users ? (
+            <p className="text-sm text-destructive">Failed to load users.</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Outlet</TableHead>
+                  <TableHead>Last Login</TableHead>
+                  <TableHead>Active</TableHead>
+                  <TableHead />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {users.map((u) => (
+                  <TableRow key={u.id}>
+                    <TableCell className="font-medium">{u.name}</TableCell>
+                    <TableCell>{u.email}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{u.role}</Badge>
+                    </TableCell>
+                    <TableCell>{u.outletName ?? 'All'}</TableCell>
+                    <TableCell>{u.lastLoginAt ? formatDate(u.lastLoginAt) : 'Never'}</TableCell>
+                    <TableCell>
+                      <Switch
+                        checked={u.isActive}
+                        onCheckedChange={(checked) => updateUser.mutate({ id: u.id, isActive: checked })}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <button className="text-xs font-medium text-primary hover:underline" onClick={() => setEditing(u)}>
+                        Edit
+                      </button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      <CreateUserDialog open={createOpen} onClose={() => setCreateOpen(false)} roles={roles ?? []} outlets={outlets ?? []} />
+      <EditUserDialog user={editing} onClose={() => setEditing(null)} roles={roles ?? []} outlets={outlets ?? []} />
+    </div>
+  );
+}
+
+function CreateUserDialog({
+  open,
+  onClose,
+  roles,
+  outlets,
+}: {
+  open: boolean;
+  onClose: () => void;
+  roles: { id: string; name: string }[];
+  outlets: { id: string; name: string }[];
+}) {
+  const createUser = useCreateUser();
+  const [email, setEmail] = useState('');
+  const [name, setName] = useState('');
+  const [password, setPassword] = useState('');
+  const [roleId, setRoleId] = useState('');
+  const [outletId, setOutletId] = useState<string>('');
+
+  function reset() {
+    setEmail('');
+    setName('');
+    setPassword('');
+    setRoleId('');
+    setOutletId('');
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && (onClose(), reset())}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Add User</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div className="space-y-1">
+            <Label>Name</Label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} />
+          </div>
+          <div className="space-y-1">
+            <Label>Email</Label>
+            <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+          </div>
+          <div className="space-y-1">
+            <Label>Password</Label>
+            <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+          </div>
+          <div className="space-y-1">
+            <Label>Role</Label>
+            <Select value={roleId} onValueChange={(v) => setRoleId(v ?? '')}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select role" />
+              </SelectTrigger>
+              <SelectContent>
+                {roles.map((r) => (
+                  <SelectItem key={r.id} value={r.id}>
+                    {r.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label>Assigned Outlet (Outlet Manager only)</Label>
+            <Select value={outletId} onValueChange={(v) => setOutletId(v ?? '')}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="None" />
+              </SelectTrigger>
+              <SelectContent>
+                {outlets.map((o) => (
+                  <SelectItem key={o.id} value={o.id}>
+                    {o.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button
+            disabled={!email || !name || !password || !roleId || createUser.isPending}
+            onClick={() =>
+              createUser.mutate(
+                { email, name, password, roleId, outletId: outletId || undefined },
+                {
+                  onSuccess: () => {
+                    onClose();
+                    reset();
+                  },
+                }
+              )
+            }
+          >
+            Create
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function EditUserDialog({
+  user,
+  onClose,
+  roles,
+  outlets,
+}: {
+  user: UserRow | null;
+  onClose: () => void;
+  roles: { id: string; name: string }[];
+  outlets: { id: string; name: string }[];
+}) {
+  const updateUser = useUpdateUser();
+  const [roleId, setRoleId] = useState(user?.roleId ?? '');
+  const [outletId, setOutletId] = useState(user?.outletId ?? '');
+  const [password, setPassword] = useState('');
+
+  return (
+    <Dialog
+      open={Boolean(user)}
+      onOpenChange={(o) => {
+        if (!o) {
+          onClose();
+          setPassword('');
+        }
+      }}
+    >
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Edit {user?.name}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div className="space-y-1">
+            <Label>Role</Label>
+            <Select value={roleId || user?.roleId} onValueChange={(v) => setRoleId(v ?? '')}>
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {roles.map((r) => (
+                  <SelectItem key={r.id} value={r.id}>
+                    {r.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label>Assigned Outlet</Label>
+            <Select value={outletId || user?.outletId || ''} onValueChange={(v) => setOutletId(v ?? '')}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="None" />
+              </SelectTrigger>
+              <SelectContent>
+                {outlets.map((o) => (
+                  <SelectItem key={o.id} value={o.id}>
+                    {o.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label>Reset Password</Label>
+            <Input type="password" placeholder="Leave blank to keep current" value={password} onChange={(e) => setPassword(e.target.value)} />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button
+            disabled={updateUser.isPending}
+            onClick={() => {
+              if (!user) return;
+              updateUser.mutate(
+                {
+                  id: user.id,
+                  roleId: roleId || user.roleId,
+                  outletId: outletId || null,
+                  ...(password ? { password } : {}),
+                },
+                { onSuccess: onClose }
+              );
+            }}
+          >
+            Save
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
