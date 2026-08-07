@@ -1,12 +1,9 @@
-import { PrismaClient, RoleName, OutletType, DataSource, PurchaseOrderStatus, InventoryTransactionType, ApiType, SyncType } from '@prisma/client';
+import { PrismaClient, RoleName, OutletType, ApiType, SyncType } from '@prisma/client';
 import bcrypt from 'bcryptjs';
-import { faker } from '@faker-js/faker';
 import { encrypt } from '../src/utils/encryption';
 import { DEFAULT_CRON_EXPRESSIONS } from '../src/config/constants';
 
 const prisma = new PrismaClient();
-
-faker.seed(20260806);
 
 // Outlets extracted from the Petpooja email threads (apidocs/apidocs.txt).
 // `brand` groupings for the non-Aiko/Capiche/Bookends outlets are an inferred
@@ -36,37 +33,6 @@ const KNOWN_OUTLETS = [
   { name: 'Surat Prep Kitchen', brand: 'KG', rid: '376017', city: 'Surat', type: OutletType.PREP_KITCHEN, salesSyncCode: null, inventorySyncCode: 'kv4roawcjf' },
   { name: 'Accounts Department', brand: 'Internal', rid: '451175', city: null, type: OutletType.ADMIN, salesSyncCode: null, inventorySyncCode: null },
 ] as const;
-
-const ITEM_CATALOG = [
-  { name: 'Margherita Pizza', category: 'Pizza', price: 249 },
-  { name: 'Farmhouse Pizza', category: 'Pizza', price: 299 },
-  { name: 'Chocolate Truffle Cake', category: 'Cakes', price: 450 },
-  { name: 'Red Velvet Cake', category: 'Cakes', price: 480 },
-  { name: 'Butter Croissant', category: 'Bakery', price: 90 },
-  { name: 'Blueberry Muffin', category: 'Bakery', price: 110 },
-  { name: 'Cappuccino', category: 'Beverages', price: 150 },
-  { name: 'Cold Coffee', category: 'Beverages', price: 170 },
-  { name: 'Paneer Tikka Sandwich', category: 'Sandwiches', price: 199 },
-  { name: 'Club Sandwich', category: 'Sandwiches', price: 229 },
-  { name: 'Pasta Alfredo', category: 'Pasta', price: 279 },
-  { name: 'Pasta Arrabbiata', category: 'Pasta', price: 259 },
-  { name: 'Chicken Burger', category: 'Burgers', price: 219 },
-  { name: 'Veg Burger', category: 'Burgers', price: 179 },
-  { name: 'French Fries', category: 'Sides', price: 129 },
-  { name: 'Garlic Bread', category: 'Sides', price: 149 },
-  { name: 'Brownie with Ice Cream', category: 'Desserts', price: 199 },
-  { name: 'Tiramisu', category: 'Desserts', price: 249 },
-  { name: 'Masala Chai', category: 'Beverages', price: 60 },
-  { name: 'Fresh Lime Soda', category: 'Beverages', price: 90 },
-];
-
-const PAYMENT_MODES = ['Cash', 'Card', 'UPI', 'Swiggy', 'Zomato'];
-const VENDOR_NAMES = ['Ambika Dairy Suppliers', 'Gujarat Fresh Produce', 'Shree Packaging Co.', 'National Beverages Distributor', 'Prime Meats & Poultry', 'Metro Bakery Ingredients'];
-
-function decimalRound(n: number, places = 2): number {
-  const factor = 10 ** places;
-  return Math.round(n * factor) / factor;
-}
 
 async function seedRolesAndAdmin() {
   const roleRecords = await Promise.all(
@@ -127,205 +93,6 @@ async function seedOutlets() {
     outlets.push(outlet);
   }
   return outlets;
-}
-
-async function seedSalesForOutlet(outletId: string, days: number) {
-  const now = new Date();
-  let invoiceCounter = 1;
-
-  for (let dayOffset = days - 1; dayOffset >= 0; dayOffset--) {
-    const day = new Date(now);
-    day.setDate(day.getDate() - dayOffset);
-
-    const ordersToday = faker.number.int({ min: 15, max: 45 });
-
-    for (let i = 0; i < ordersToday; i++) {
-      const hour = faker.number.int({ min: 9, max: 22 });
-      const minute = faker.number.int({ min: 0, max: 59 });
-      const orderDateTime = new Date(day);
-      orderDateTime.setHours(hour, minute, 0, 0);
-
-      const lineItemCount = faker.number.int({ min: 1, max: 5 });
-      const chosenItems = faker.helpers.arrayElements(ITEM_CATALOG, lineItemCount);
-
-      let gross = 0;
-      const items = chosenItems.map((item) => {
-        const quantity = faker.number.int({ min: 1, max: 3 });
-        const price = item.price;
-        const lineGross = price * quantity;
-        const discount = decimalRound(lineGross * faker.number.float({ min: 0, max: 0.1 }));
-        const tax = decimalRound((lineGross - discount) * 0.05);
-        const total = decimalRound(lineGross - discount + tax);
-        gross += lineGross;
-        return {
-          itemName: item.name,
-          category: item.category,
-          quantity,
-          price,
-          discount,
-          tax,
-          total,
-        };
-      });
-
-      const discountAmount = decimalRound(items.reduce((s, i) => s + i.discount, 0));
-      const taxAmount = decimalRound(items.reduce((s, i) => s + i.tax, 0));
-      const netAmount = decimalRound(gross - discountAmount + taxAmount);
-
-      await prisma.sale.create({
-        data: {
-          outletId,
-          invoiceNumber: `INV-${outletId.slice(-4).toUpperCase()}-${String(invoiceCounter++).padStart(5, '0')}`,
-          orderDateTime,
-          orderDate: new Date(day.getFullYear(), day.getMonth(), day.getDate()),
-          customerName: faker.datatype.boolean(0.6) ? faker.person.fullName() : null,
-          customerPhone: faker.datatype.boolean(0.6) ? faker.phone.number({ style: 'national' }) : null,
-          grossAmount: decimalRound(gross),
-          discountAmount,
-          taxAmount,
-          netAmount,
-          paymentMode: faker.helpers.arrayElement(PAYMENT_MODES),
-          orderType: faker.helpers.arrayElement(['Dine-in', 'Takeaway', 'Delivery']),
-          items: { create: items },
-        },
-      });
-    }
-  }
-}
-
-async function seedInventoryForOutlet(outletId: string, days: number) {
-  const now = new Date();
-  for (let dayOffset = days - 1; dayOffset >= 0; dayOffset--) {
-    const day = new Date(now);
-    day.setDate(day.getDate() - dayOffset);
-    const stockDate = new Date(day.getFullYear(), day.getMonth(), day.getDate());
-
-    const items = faker.helpers.arrayElements(ITEM_CATALOG, 12);
-    for (const item of items) {
-      const opening = faker.number.int({ min: 5, max: 100 });
-      const purchased = faker.number.int({ min: 0, max: 30 });
-      const consumed = faker.number.int({ min: 0, max: opening + purchased });
-      const closing = Math.max(0, opening + purchased - consumed);
-      const unitValue = decimalRound(item.price * 0.4);
-      const lowStockThreshold = 10;
-
-      await prisma.inventory.upsert({
-        where: { outletId_itemName_stockDate: { outletId, itemName: item.name, stockDate } },
-        update: {},
-        create: {
-          outletId,
-          itemName: item.name,
-          category: item.category,
-          unit: 'pcs',
-          store: 'Main Store',
-          openingStock: opening,
-          purchasedQty: purchased,
-          consumedQty: consumed,
-          closingStock: closing,
-          currentStock: closing,
-          unitValue,
-          stockValue: decimalRound(closing * unitValue),
-          lowStockThreshold,
-          isLowStock: closing < lowStockThreshold,
-          stockDate,
-          source: DataSource.STUB,
-        },
-      });
-
-      await prisma.inventoryTransaction.create({
-        data: {
-          outletId,
-          itemName: item.name,
-          transactionType: InventoryTransactionType.CONSUMPTION,
-          quantity: consumed,
-          unit: 'pcs',
-          transactionDate: stockDate,
-          source: DataSource.STUB,
-        },
-      });
-      if (purchased > 0) {
-        await prisma.inventoryTransaction.create({
-          data: {
-            outletId,
-            itemName: item.name,
-            transactionType: InventoryTransactionType.PURCHASE,
-            quantity: purchased,
-            unit: 'pcs',
-            transactionDate: stockDate,
-            source: DataSource.STUB,
-          },
-        });
-      }
-    }
-  }
-}
-
-async function seedVendors() {
-  return Promise.all(
-    VENDOR_NAMES.map((name) =>
-      prisma.vendor.create({
-        data: {
-          name,
-          contactPerson: faker.person.fullName(),
-          phone: faker.phone.number({ style: 'national' }),
-          email: faker.internet.email({ provider: 'example.com' }),
-          address: faker.location.streetAddress(),
-        },
-      })
-    )
-  );
-}
-
-async function seedPurchaseOrdersForOutlet(outletId: string, outletRid: string, vendorIds: string[]) {
-  const count = faker.number.int({ min: 2, max: 4 });
-  for (let i = 0; i < count; i++) {
-    const orderDate = faker.date.recent({ days: 30 });
-    const expectedDate = new Date(orderDate);
-    expectedDate.setDate(expectedDate.getDate() + faker.number.int({ min: 2, max: 10 }));
-    const status = faker.helpers.arrayElement(Object.values(PurchaseOrderStatus));
-
-    const lineItemCount = faker.number.int({ min: 2, max: 6 });
-    const items = Array.from({ length: lineItemCount }).map(() => {
-      const quantity = faker.number.int({ min: 5, max: 50 });
-      const rate = faker.number.float({ min: 20, max: 500, fractionDigits: 2 });
-      const amount = decimalRound(quantity * rate);
-      const cgst = decimalRound(amount * 0.025);
-      const sgst = decimalRound(amount * 0.025);
-      const receivedQty = status === 'RECEIVED' ? quantity : status === 'PARTIALLY_RECEIVED' ? Math.floor(quantity / 2) : 0;
-      return {
-        itemName: faker.commerce.productName(),
-        quantity,
-        unit: 'kg',
-        rate,
-        amount,
-        cgst,
-        sgst,
-        igst: 0,
-        cess: 0,
-        receivedQty,
-        pendingQty: quantity - receivedQty,
-      };
-    });
-
-    const totalAmount = decimalRound(items.reduce((s, i) => s + i.amount, 0));
-    const taxAmount = decimalRound(items.reduce((s, i) => s + i.cgst + i.sgst, 0));
-
-    await prisma.purchaseOrder.create({
-      data: {
-        poNumber: `PO-${outletRid}-${String(i + 1).padStart(3, '0')}-${orderDate.getFullYear()}`,
-        outletId,
-        vendorId: faker.helpers.arrayElement(vendorIds),
-        invoiceNumber: faker.string.alphanumeric(8).toUpperCase(),
-        status,
-        totalAmount: decimalRound(totalAmount + taxAmount),
-        taxAmount,
-        orderDate,
-        expectedDate,
-        receivedDate: status === 'RECEIVED' ? expectedDate : null,
-        items: { create: items },
-      },
-    });
-  }
 }
 
 async function seedPetpoojaConfig() {
@@ -393,22 +160,7 @@ async function main() {
   const { admin } = await seedRolesAndAdmin();
 
   console.log('Seeding outlets...');
-  const outlets = await seedOutlets();
-
-  const existingSales = await prisma.sale.count();
-  if (existingSales === 0) {
-    console.log('Seeding sales + inventory + purchase orders (this may take a minute)...');
-    const vendors = await seedVendors();
-    const vendorIds = vendors.map((v) => v.id);
-
-    for (const outlet of outlets.filter((o) => o.outletType !== OutletType.ADMIN)) {
-      await seedSalesForOutlet(outlet.id, 30);
-      await seedInventoryForOutlet(outlet.id, 7);
-      await seedPurchaseOrdersForOutlet(outlet.id, outlet.rid, vendorIds);
-    }
-  } else {
-    console.log('Sales already seeded, skipping transactional data.');
-  }
+  await seedOutlets();
 
   console.log('Seeding Petpooja API config...');
   await seedPetpoojaConfig();

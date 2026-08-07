@@ -10,6 +10,7 @@ function toNum(v: unknown): number {
 
 export interface InventoryQuery {
   outletId?: string;
+  brand?: string;
   store?: string;
   category?: string;
   lowStockOnly?: string;
@@ -29,6 +30,7 @@ export async function listInventory(query: InventoryQuery) {
 
   const where: Prisma.InventoryWhereInput = {
     ...(query.outletId ? { outletId: query.outletId } : {}),
+    ...(query.brand ? { outlet: { brand: query.brand } } : {}),
     ...(query.store ? { store: query.store } : {}),
     ...(query.category ? { category: query.category } : {}),
     ...(query.lowStockOnly === 'true' ? { isLowStock: true } : {}),

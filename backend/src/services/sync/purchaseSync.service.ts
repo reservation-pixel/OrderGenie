@@ -112,12 +112,22 @@ async function recordTransfer(outlet: Outlet, transfer: MappedTransfer): Promise
   }
 }
 
+/**
+ * Billing outlets (Capiche/Aiko/Bookends — only a salesSyncCode, no inventorySyncCode)
+ * don't have a separate Purchase/Inventory API integration with Petpooja; their purchase
+ * records come back through the SAME get_purchase/ endpoint but authenticated with the
+ * SALES credential set and keyed by salesSyncCode instead — confirmed live via the API
+ * Explorer (Settings > API Explorer > Purchase API) before wiring this into production sync.
+ */
 async function syncOutletPurchases(outlet: Outlet, fromDate: Date, toDate: Date): Promise<SyncOutletResult> {
-  const credentials = await resolveCredentials(ApiType.PURCHASE);
-  if (!credentials) throw new Error('Petpooja Purchase API is not configured');
-  if (!outlet.inventorySyncCode) throw new Error('Outlet has no Purchase/Inventory API sync code configured');
+  const isBilling = Boolean(outlet.salesSyncCode);
+  const credentials = await resolveCredentials(isBilling ? ApiType.SALES : ApiType.PURCHASE);
+  if (!credentials) throw new Error(`Petpooja ${isBilling ? 'Sales' : 'Purchase'} API is not configured`);
 
-  const records = await fetchPurchases(credentials, outlet.inventorySyncCode, fromDate, toDate);
+  const restID = isBilling ? outlet.salesSyncCode : outlet.inventorySyncCode;
+  if (!restID) throw new Error('Outlet has no Sales/Purchase API sync code configured');
+
+  const records = await fetchPurchases(credentials, restID, fromDate, toDate);
 
   let created = 0;
   let updated = 0;
@@ -125,14 +135,23 @@ async function syncOutletPurchases(outlet: Outlet, fromDate: Date, toDate: Date)
 
   for (const record of records) {
     try {
-      if (isTransferRecord(record)) {
+      const isTransfer = isTransferRecord(record);
+      if (isTransfer) {
+        // Internal stock movements (e.g. Prep Kitchen -> outlet) have no external vendor,
+        // but still represent real stock/value received into this outlet — so in addition
+        // to the InventoryTransaction below (used for stock-level tracking), also surface
+        // them on the Purchase Orders page, clearly labeled as internal rather than a real
+        // vendor purchase, since "0 purchase orders" read as broken when this data exists.
         await recordTransfer(outlet, mapPetpoojaTransferFromPurchase(record));
-        created++;
-      } else {
-        const result = await upsertPurchaseOrder(outlet.id, mapPetpoojaPurchase(record));
-        if (result === 'created') created++;
-        else updated++;
       }
+
+      const mapped = mapPetpoojaPurchase(record);
+      const result = await upsertPurchaseOrder(outlet.id, {
+        ...mapped,
+        vendorName: isTransfer ? `${mapped.vendorName ?? 'Internal'} (Internal Transfer)` : mapped.vendorName,
+      });
+      if (result === 'created') created++;
+      else updated++;
     } catch {
       failed++;
     }
@@ -151,7 +170,7 @@ export async function runPurchaseSync(
   const outlets = await prisma.outlet.findMany({
     where: {
       isActive: true,
-      inventorySyncCode: { not: null },
+      OR: [{ inventorySyncCode: { not: null } }, { salesSyncCode: { not: null } }],
       ...(outletIds ? { id: { in: outletIds } } : {}),
     },
   });

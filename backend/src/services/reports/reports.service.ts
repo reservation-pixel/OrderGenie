@@ -48,7 +48,7 @@ export async function buildReport(type: ReportType, query: Record<string, string
           { key: 'discount', header: 'Discount' },
           { key: 'tax', header: 'Tax' },
         ],
-        rows,
+        rows: rows.map((r) => ({ ...r })),
       };
     }
     case 'inventory': {

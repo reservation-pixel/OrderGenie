@@ -10,6 +10,7 @@ function toNum(v: unknown): number {
 
 export interface SalesQuery {
   outletId?: string;
+  brand?: string;
   range?: string;
   from?: string;
   to?: string;
@@ -25,6 +26,7 @@ export async function listSales(query: SalesQuery) {
   const where: Prisma.SaleWhereInput = {
     orderDateTime: { gte: from, lte: to },
     ...(query.outletId ? { outletId: query.outletId } : {}),
+    ...(query.brand ? { outlet: { brand: query.brand } } : {}),
     ...(query.paymentMode ? { paymentMode: query.paymentMode } : {}),
   };
 
@@ -94,6 +96,7 @@ export async function getSaleById(id: string, restrictToOutletId?: string) {
 
 export interface ItemSalesQuery {
   outletId?: string;
+  brand?: string;
   range?: string;
   from?: string;
   to?: string;
@@ -104,17 +107,38 @@ export interface ItemSalesQuery {
   pageSize?: string;
 }
 
-export async function listItemSales(query: ItemSalesQuery) {
-  const { from, to } = resolveDateRange(query);
+export interface ItemAggregateRow {
+  itemName: string;
+  category: string | null;
+  quantitySold: number;
+  revenue: number;
+  averagePrice: number;
+  discount: number;
+  tax: number;
+}
 
+/**
+ * Fetches SaleItem rows for the given scope/date-range and groups them by itemName.
+ * Shared by listItemSales (which additionally sorts/paginates) and the Class A Items
+ * summary (which resolves curated item/category watchlist entries against the full set).
+ */
+export async function aggregateItemSales(params: {
+  outletId?: string;
+  brand?: string;
+  from: Date;
+  to: Date;
+  category?: string;
+  search?: string;
+}): Promise<ItemAggregateRow[]> {
   const items = await prisma.saleItem.findMany({
     where: {
       sale: {
-        orderDateTime: { gte: from, lte: to },
-        ...(query.outletId ? { outletId: query.outletId } : {}),
+        orderDateTime: { gte: params.from, lte: params.to },
+        ...(params.outletId ? { outletId: params.outletId } : {}),
+        ...(params.brand ? { outlet: { brand: params.brand } } : {}),
       },
-      ...(query.category ? { category: query.category } : {}),
-      ...(query.search ? { itemName: { contains: query.search, mode: 'insensitive' } } : {}),
+      ...(params.category ? { category: params.category } : {}),
+      ...(params.search ? { itemName: { contains: params.search, mode: 'insensitive' } } : {}),
     },
     select: { itemName: true, category: true, quantity: true, price: true, discount: true, tax: true, total: true },
   });
@@ -145,7 +169,7 @@ export async function listItemSales(query: ItemSalesQuery) {
     grouped.set(key, cur);
   }
 
-  let rows = Array.from(grouped.values()).map((r) => ({
+  return Array.from(grouped.values()).map((r) => ({
     itemName: r.itemName,
     category: r.category,
     quantitySold: r.quantitySold,
@@ -154,6 +178,19 @@ export async function listItemSales(query: ItemSalesQuery) {
     discount: r.discount,
     tax: r.tax,
   }));
+}
+
+export async function listItemSales(query: ItemSalesQuery) {
+  const { from, to } = resolveDateRange(query);
+
+  let rows = await aggregateItemSales({
+    outletId: query.outletId,
+    brand: query.brand,
+    from,
+    to,
+    category: query.category,
+    search: query.search,
+  });
 
   rows.sort((a, b) => (query.sort === 'least' ? a.quantitySold - b.quantitySold : b.quantitySold - a.quantitySold));
 

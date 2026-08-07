@@ -1,10 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api-client';
-import { useRangeParams } from '@/hooks/useRangeParams';
+import { useRangeParams, type RangeParamOverrides } from '@/hooks/useRangeParams';
 import type { ApiEnvelope, DashboardData } from '@/types/api';
 
-export function useDashboard() {
-  const rangeParams = useRangeParams();
+export function useDashboard(overrides?: RangeParamOverrides) {
+  const rangeParams = useRangeParams(overrides);
 
   return useQuery({
     queryKey: ['dashboard', rangeParams],

@@ -7,16 +7,20 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Pagination } from '@/components/shared/Pagination';
+import { DateRangeFilter } from '@/components/shared/DateRangeFilter';
 import { PurchaseOrderDetailDialog } from '@/components/purchase-orders/PurchaseOrderDetailDialog';
 import { STATUS_VARIANT } from '@/components/purchase-orders/status';
 import { usePurchaseOrders } from '@/hooks/usePurchaseOrders';
+import { useResettingPage } from '@/hooks/useResettingPage';
+import { useFilterStore } from '@/store/filterStore';
 import { formatCurrency, formatDate } from '@/lib/format';
 
 const STATUSES = ['all', 'DRAFT', 'PENDING', 'PARTIALLY_RECEIVED', 'RECEIVED', 'CANCELLED'];
 
 export default function PurchaseOrdersPage() {
-  const [page, setPage] = useState(1);
+  const { customFrom, customTo } = useFilterStore();
   const [status, setStatus] = useState('all');
+  const [page, setPage] = useResettingPage(`${status}|${customFrom}|${customTo}`);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const { data, isLoading, isError } = usePurchaseOrders(page, 25, status);
@@ -25,7 +29,7 @@ export default function PurchaseOrdersPage() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-xl font-semibold">Purchase Orders</h1>
-        <Select value={status} onValueChange={(v) => { setStatus(v ?? 'all'); setPage(1); }}>
+        <Select value={status} onValueChange={(v) => setStatus(v ?? 'all')}>
           <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
@@ -36,6 +40,8 @@ export default function PurchaseOrdersPage() {
           </SelectContent>
         </Select>
       </div>
+
+      <DateRangeFilter />
 
       <Card>
         <CardHeader>

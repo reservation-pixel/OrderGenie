@@ -10,6 +10,7 @@ function toNum(v: unknown): number {
 
 export interface PurchaseOrderQuery {
   outletId?: string;
+  brand?: string;
   status?: string;
   vendorId?: string;
   range?: string;
@@ -25,6 +26,7 @@ export async function listPurchaseOrders(query: PurchaseOrderQuery) {
 
   const where: Prisma.PurchaseOrderWhereInput = {
     ...(query.outletId ? { outletId: query.outletId } : {}),
+    ...(query.brand ? { outlet: { brand: query.brand } } : {}),
     ...(query.status ? { status: query.status as PurchaseOrderStatus } : {}),
     ...(query.vendorId ? { vendorId: query.vendorId } : {}),
     orderDate: { gte: from, lte: to },

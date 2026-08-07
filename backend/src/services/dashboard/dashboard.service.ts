@@ -13,8 +13,21 @@ function dayBounds(d: Date) {
   return { from, to };
 }
 
-export async function getDashboard(outletId?: string, rangeQuery?: { range?: string; from?: string; to?: string }) {
-  const where = outletId ? { outletId } : {};
+export async function getDashboard(
+  outletId?: string,
+  brand?: string,
+  rangeQuery?: { range?: string; from?: string; to?: string }
+) {
+  const where = {
+    ...(outletId ? { outletId } : {}),
+    ...(brand ? { outlet: { brand } } : {}),
+  };
+  const outletWhere = {
+    isActive: true,
+    outletType: 'OUTLET' as const,
+    ...(outletId ? { id: outletId } : {}),
+    ...(brand ? { brand } : {}),
+  };
   const now = new Date();
   const today = dayBounds(now);
   const yesterdayDate = new Date(now);
@@ -56,7 +69,7 @@ export async function getDashboard(outletId?: string, rangeQuery?: { range?: str
         where: { ...where, orderDateTime: { gte: rangeFrom, lte: rangeTo } },
         select: { orderDateTime: true, orderDate: true, netAmount: true, outletId: true },
       }),
-      prisma.outlet.findMany({ where: { isActive: true, outletType: 'OUTLET' }, select: { id: true, name: true } }),
+      prisma.outlet.findMany({ where: outletWhere, select: { id: true, name: true } }),
       prisma.saleItem.findMany({
         where: { sale: { ...where, orderDateTime: { gte: rangeFrom, lte: rangeTo } } },
         select: { itemName: true, quantity: true, total: true },

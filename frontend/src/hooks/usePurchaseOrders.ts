@@ -1,10 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api-client';
-import { useRangeParams } from '@/hooks/useRangeParams';
+import { useRangeParams, type RangeParamOverrides } from '@/hooks/useRangeParams';
 import type { ApiEnvelope, PaginationMeta, PurchaseOrderDetail, PurchaseOrderRow } from '@/types/api';
 
-export function usePurchaseOrders(page: number, pageSize = 25, status?: string) {
-  const rangeParams = useRangeParams();
+export function usePurchaseOrders(page: number, pageSize = 25, status?: string, overrides?: RangeParamOverrides) {
+  const rangeParams = useRangeParams(overrides);
 
   return useQuery({
     queryKey: ['purchase-orders', rangeParams, page, pageSize, status],

@@ -72,6 +72,11 @@ enum DataSource {
   MANUAL
 }
 
+enum ClassAItemType {
+  ITEM
+  CATEGORY
+}
+
 // ---------- Core entities ----------
 
 model Role {
@@ -325,4 +330,14 @@ model NotificationSetting {
   syncFailureAlerts   Boolean  @default(true)
   dailySummaryEmail   Boolean  @default(false)
   updatedAt           DateTime @updatedAt
+}
+
+model ClassAItem {
+  id        String         @id @default(cuid())
+  brand     String
+  type      ClassAItemType
+  value     String
+  createdAt DateTime       @default(now())
+
+  @@unique([brand, type, value])
 }

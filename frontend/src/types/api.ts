@@ -106,6 +106,25 @@ export interface ItemSalesRow {
   tax: number;
 }
 
+export type ClassAItemType = 'ITEM' | 'CATEGORY';
+
+export interface ClassAItem {
+  id: string;
+  brand: string;
+  type: ClassAItemType;
+  value: string;
+  createdAt: string;
+}
+
+export interface ClassAItemSummaryRow {
+  key: string;
+  itemName: string;
+  category: string | null;
+  quantitySold: number;
+  revenue: number;
+  averagePrice: number;
+}
+
 export interface InventoryRow {
   id: string;
   outletId: string;

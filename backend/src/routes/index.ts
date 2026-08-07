@@ -9,6 +9,7 @@ import reportsRoutes from './reports.routes';
 import settingsRoutes from './settings.routes';
 import syncRoutes from './sync.routes';
 import petpoojaExplorerRoutes from './petpoojaExplorer.routes';
+import classAItemsRoutes from './classAItems.routes';
 
 const router = Router();
 
@@ -22,5 +23,6 @@ router.use('/reports', reportsRoutes);
 router.use('/settings', settingsRoutes);
 router.use('/sync', syncRoutes);
 router.use('/petpooja-explorer', petpoojaExplorerRoutes);
+router.use('/class-a-items', classAItemsRoutes);
 
 export default router;

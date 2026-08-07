@@ -13,20 +13,30 @@ export interface OutletCardsProps {
    * show every outlet.
    */
   eligibleField?: 'salesSyncCode' | 'inventorySyncCode';
+  /** Only show outlets belonging to this brand — e.g. 'Aiko' on a brand workspace page. */
+  brand?: string;
+  /** Controlled selected outlet id, bypassing the global filter store. Requires onChange. */
+  value?: string;
+  /** Controlled selection handler, bypassing the global filter store. Requires value. */
+  onChange?: (outletId: string) => void;
 }
 
-export function OutletCards({ eligibleField }: OutletCardsProps = {}) {
+export function OutletCards({ eligibleField, brand, value, onChange }: OutletCardsProps = {}) {
   const { data: allOutlets, isLoading } = useOutlets();
-  const { outletId, setOutletId } = useFilterStore();
+  const store = useFilterStore();
+  const outletId = value ?? store.outletId;
+  const setOutletId = onChange ?? store.setOutletId;
 
   if (isLoading || !allOutlets) return null;
 
-  const outlets = eligibleField ? allOutlets.filter((o) => o[eligibleField]) : allOutlets;
+  const outlets = allOutlets
+    .filter((o) => !eligibleField || o[eligibleField])
+    .filter((o) => !brand || o.brand === brand);
 
   return (
     <div className="flex flex-wrap gap-2">
       <OutletCard
-        label="All Outlets"
+        label={brand ? `All ${brand} Outlets` : 'All Outlets'}
         sublabel={`${outlets.length} outlets`}
         active={outletId === 'all'}
         onClick={() => setOutletId('all')}

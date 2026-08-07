@@ -1,10 +1,15 @@
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api-client';
-import { useRangeParams } from '@/hooks/useRangeParams';
+import { useRangeParams, type RangeParamOverrides } from '@/hooks/useRangeParams';
 import type { ApiEnvelope, InventoryDetail, InventoryRow, PaginationMeta } from '@/types/api';
 
-export function useInventory(page: number, pageSize = 25, extra: { store?: string; category?: string; lowStockOnly?: boolean } = {}) {
-  const rangeParams = useRangeParams();
+export function useInventory(
+  page: number,
+  pageSize = 25,
+  extra: { store?: string; category?: string; lowStockOnly?: boolean } = {},
+  overrides?: RangeParamOverrides
+) {
+  const rangeParams = useRangeParams(overrides);
 
   return useQuery({
     queryKey: ['inventory', rangeParams, page, pageSize, extra],
