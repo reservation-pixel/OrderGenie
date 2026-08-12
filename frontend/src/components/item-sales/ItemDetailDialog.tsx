@@ -12,7 +12,7 @@ export function ItemDetailDialog({ itemName, onClose }: { itemName: string | nul
 
   return (
     <Dialog open={Boolean(itemName)} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
+      <DialogContent className="max-h-[85vh] sm:max-w-2xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{itemName}</DialogTitle>
         </DialogHeader>

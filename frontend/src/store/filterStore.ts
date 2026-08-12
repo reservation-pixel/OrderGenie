@@ -17,13 +17,22 @@ function todayIso(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+function daysAgoIso(days: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() - days);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 // The Header's date filter is always two explicit Start/End date inputs (no presets
-// UI), so the store defaults to an explicit today-to-today custom range from the
-// start, rather than an implicit preset the UI wouldn't have a way to display.
+// UI), so the store defaults to an explicit custom range from the start, rather than
+// an implicit preset the UI wouldn't have a way to display. Defaults to the last 7
+// days (matching HISTORICAL_SYNC_WINDOW_DAYS on the backend) rather than today-only —
+// a today-only default made data synced as recently as yesterday invisible without
+// the user manually widening the filter, which reads as "not fetched" when it isn't.
 export const useFilterStore = create<FilterState>((set) => ({
   outletId: 'all',
   range: 'custom',
-  customFrom: todayIso(),
+  customFrom: daysAgoIso(6),
   customTo: todayIso(),
   setOutletId: (outletId) => set({ outletId }),
   setRange: (range) => set({ range }),

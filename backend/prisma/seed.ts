@@ -17,10 +17,10 @@ const KNOWN_OUTLETS = [
   { name: 'Aiko (Ahmedabad)', brand: 'Aiko', rid: '134691', city: 'Ahmedabad', type: OutletType.OUTLET, salesSyncCode: 'z2ogsrb0', inventorySyncCode: null },
   { name: 'Aiko (Surat)', brand: 'Aiko', rid: '73492', city: 'Surat', type: OutletType.OUTLET, salesSyncCode: '1ce6t782', inventorySyncCode: null },
   { name: 'Bookends Mobile', brand: 'Bookends', rid: '359628', city: null, type: OutletType.OUTLET, salesSyncCode: 'yvop12cq3m', inventorySyncCode: null },
-  { name: 'Capiche (Ahmedabad)', brand: 'Capiche', rid: '353369', city: 'Ahmedabad', type: OutletType.OUTLET, salesSyncCode: 'qvy5ze7s0c', inventorySyncCode: null },
+  { name: 'Capiche Ambli', brand: 'Capiche', rid: '353369', city: 'Ahmedabad', type: OutletType.OUTLET, salesSyncCode: 'qvy5ze7s0c', inventorySyncCode: null },
   { name: 'Capiche (Piplod)', brand: 'Capiche', rid: '21492', city: 'Surat', type: OutletType.OUTLET, salesSyncCode: 'ukrhzywj', inventorySyncCode: null },
   { name: 'Capiche (Vesu)', brand: 'Capiche', rid: '344447', city: 'Surat', type: OutletType.OUTLET, salesSyncCode: '4tmaivhj', inventorySyncCode: null },
-  { name: 'Capiche Ahmedabad 2.0', brand: 'Capiche', rid: '419174', city: 'Ahmedabad', type: OutletType.OUTLET, salesSyncCode: 'ihtnr4a7cy', inventorySyncCode: null },
+  { name: 'Capiche Uni', brand: 'Capiche', rid: '419174', city: 'Ahmedabad', type: OutletType.OUTLET, salesSyncCode: 'ihtnr4a7cy', inventorySyncCode: null },
   { name: 'Ahmedabad Bakery', brand: 'KG', rid: '410700', city: 'Ahmedabad', type: OutletType.OUTLET, salesSyncCode: null, inventorySyncCode: 'eh0x8kt3d2' },
   { name: 'Ahmedabad Store', brand: 'KG', rid: '358609', city: 'Ahmedabad', type: OutletType.OUTLET, salesSyncCode: null, inventorySyncCode: '4pwgfxrzs2' },
   { name: 'Family', brand: 'KG', rid: '394370', city: null, type: OutletType.OUTLET, salesSyncCode: null, inventorySyncCode: 'x74bivacjk' },
@@ -47,7 +47,9 @@ async function seedRolesAndAdmin() {
               ? 'Full access: users, outlets, Petpooja config, all reports'
               : name === 'MANAGEMENT'
                 ? 'Dashboards, outlet comparison, report exports'
-                : 'Single assigned outlet: sales, inventory, purchase orders',
+                : name === 'OUTLET_MANAGER'
+                  ? 'Single assigned outlet: sales, inventory, purchase orders'
+                  : 'Single assigned outlet: enter daily Opening/Actual Closing on Reconciliation only',
         },
       })
     )

@@ -3,23 +3,26 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ChevronDown, LogOut } from 'lucide-react';
+import { ChevronDown, LogOut, PanelLeft, PanelLeftClose } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { NAV_ITEMS, type NavItem } from './nav-items';
+import { NAV_ITEMS, filterForHeadChef, type NavItem } from './nav-items';
 import { useAuthStore } from '@/store/authStore';
+import { useSidebarStore } from '@/store/sidebarStore';
 import { useRouter } from 'next/navigation';
 
 function isLinkActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(href + '/');
 }
 
-export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
+export function Sidebar({ onNavigate, collapsed = false }: { onNavigate?: () => void; collapsed?: boolean }) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout } = useAuthStore();
   const isAdmin = user?.role === 'ADMIN';
+  const toggleCollapsed = useSidebarStore((s) => s.toggle);
 
-  const items = NAV_ITEMS.filter((item) => !item.adminOnly || isAdmin);
+  const baseItems = user?.role === 'HEAD_CHEF' ? filterForHeadChef(NAV_ITEMS) : NAV_ITEMS;
+  const items = baseItems.filter((item) => !item.adminOnly || isAdmin);
 
   const [manualToggle, setManualToggle] = useState<Record<string, boolean>>({});
 
@@ -35,6 +38,14 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
     setManualToggle((prev) => ({ ...prev, [item.label]: !isOpen(item) }));
   }
 
+  /** Collapsed sidebar has no room for a children list — clicking a section
+   * expands the whole sidebar back out and opens that section, rather than
+   * building a separate flyout-menu affordance. */
+  function openSectionAndExpand(item: NavItem) {
+    setManualToggle((prev) => ({ ...prev, [item.label]: true }));
+    toggleCollapsed();
+  }
+
   function handleLogout() {
     logout();
     router.replace('/login');
@@ -42,12 +53,41 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex h-16 items-center px-6 text-lg font-semibold tracking-tight">
-        OrderGenie
+      <div className={cn('flex h-16 items-center', collapsed ? 'justify-center px-2' : 'justify-between px-6')}>
+        {!collapsed && (
+          <span className="flex items-center gap-2">
+            <img src="/brand/logo-mark.png" alt="" className="h-7 w-7 rounded-md" />
+            <span className="text-lg font-semibold tracking-tight">OrderGenie</span>
+          </span>
+        )}
+        <button
+          type="button"
+          onClick={toggleCollapsed}
+          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        >
+          {collapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+        </button>
       </div>
-      <nav className="flex-1 space-y-1 px-3">
+      <nav className={cn('flex-1 space-y-1', collapsed ? 'px-2' : 'px-3')}>
         {items.map((item) => {
           if (item.children) {
+            const SectionIcon = item.icon;
+
+            if (collapsed) {
+              return (
+                <button
+                  key={item.label}
+                  type="button"
+                  title={item.label}
+                  onClick={() => openSectionAndExpand(item)}
+                  className="flex w-full items-center justify-center rounded-md px-3 py-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                >
+                  <SectionIcon className="h-4 w-4" />
+                </button>
+              );
+            }
+
             const open = isOpen(item);
             const children = item.children.filter((child) => !child.adminOnly || isAdmin);
             return (
@@ -95,26 +135,32 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
               key={item.href}
               href={item.href ?? '#'}
               onClick={onNavigate}
+              title={collapsed ? item.label : undefined}
               className={cn(
-                'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                'flex items-center rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                collapsed ? 'justify-center' : 'gap-3',
                 active
                   ? 'bg-primary text-primary-foreground'
                   : 'text-muted-foreground hover:bg-muted hover:text-foreground'
               )}
             >
               <Icon className="h-4 w-4" />
-              {item.label}
+              {!collapsed && item.label}
             </Link>
           );
         })}
       </nav>
-      <div className="border-t px-3 py-3">
+      <div className={cn('border-t py-3', collapsed ? 'px-2' : 'px-3')}>
         <button
           onClick={handleLogout}
-          className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          title={collapsed ? 'Logout' : undefined}
+          className={cn(
+            'flex w-full items-center rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground',
+            collapsed ? 'justify-center' : 'gap-3'
+          )}
         >
           <LogOut className="h-4 w-4" />
-          Logout
+          {!collapsed && 'Logout'}
         </button>
       </div>
     </div>

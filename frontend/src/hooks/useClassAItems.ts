@@ -32,6 +32,9 @@ export function useAddClassAItem() {
       toast.success(`Added ${input.value} to Class A items`);
       qc.invalidateQueries({ queryKey: ['class-a-items', input.brand] });
       qc.invalidateQueries({ queryKey: ['class-a-items-summary'] });
+      // Reconciliation's ingredient list is derived from Class A Items — without this,
+      // an added item wouldn't show up there until something else triggered a refetch.
+      qc.invalidateQueries({ queryKey: ['reconciliation'] });
     },
     onError: () => toast.error('Failed to add item'),
   });
@@ -45,6 +48,7 @@ export function useRemoveClassAItem() {
       toast.success('Removed from Class A items');
       qc.invalidateQueries({ queryKey: ['class-a-items', input.brand] });
       qc.invalidateQueries({ queryKey: ['class-a-items-summary'] });
+      qc.invalidateQueries({ queryKey: ['reconciliation'] });
     },
     onError: () => toast.error('Failed to remove item'),
   });

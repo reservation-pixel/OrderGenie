@@ -8,7 +8,7 @@ function num(v: unknown, fallback = 0): number {
 
 function parsePetpoojaDate(value: string | undefined): Date {
   if (!value) return new Date();
-  return new Date(value.includes('T') ? value : `${value}T00:00:00`);
+  return new Date(value.includes('T') ? value : `${value}T00:00:00Z`);
 }
 
 /**
@@ -90,9 +90,13 @@ export function mapPetpoojaPurchase(record: PetpoojaPurchaseRecord): MappedPurch
   const itemTax = items.reduce((s, i) => s + i.cgst + i.sgst + i.igst + i.cess, 0);
   const taxAmount = num(record.total_tax, itemTax);
   const receiver = record.restaurant_details?.receiver;
+  // Petpooja's own human-readable PO reference (what its portal displays) — only
+  // populated for internal transfers in practice, not regular vendor purchases, so
+  // this is additive to the synthetic fallback, not a full replacement for it.
+  const reference = record.restaurant_details?.reference_number || record.restaurant_details?.po_invoice_number;
 
   return {
-    poNumber: `PO-${record.purchase_id}`,
+    poNumber: reference?.trim() || `PO-${record.purchase_id}`,
     petpoojaPurchaseId: record.purchase_id,
     invoiceNumber: record.invoice_number || null,
     orderDate: parsePetpoojaDate(record.invoice_date ?? record.created_on),

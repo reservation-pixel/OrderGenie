@@ -34,7 +34,9 @@ export function Header() {
       </div>
 
       <div className="flex flex-1 items-center justify-end gap-3">
-        {user?.role === 'OUTLET_MANAGER' && <span className="text-sm text-muted-foreground">{user.outletName}</span>}
+        {(user?.role === 'OUTLET_MANAGER' || user?.role === 'HEAD_CHEF') && (
+          <span className="text-sm text-muted-foreground">{user.outletName}</span>
+        )}
 
         <div className="flex items-center gap-2">
           <Avatar className="h-8 w-8">

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Pagination } from '@/components/shared/Pagination';
@@ -15,15 +16,22 @@ import { formatCurrency, formatDate } from '@/lib/format';
 
 export function BrandPurchaseOrdersTab({ brand, outletId }: { brand: string; outletId: string }) {
   const { customFrom, customTo } = useFilterStore();
-  const filterKey = `${outletId}|${customFrom}|${customTo}`;
+  const [search, setSearch] = useState('');
+  const filterKey = `${outletId}|${customFrom}|${customTo}|${search}`;
   const [page, setPage] = useResettingPage(filterKey);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const { data, isLoading, isError } = usePurchaseOrders(page, 25, undefined, { outletId, brand });
+  const { data, isLoading, isError } = usePurchaseOrders(page, 25, { overrides: { outletId, brand }, search: search || undefined });
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0">
         <CardTitle className="text-base">Orders</CardTitle>
+        <Input
+          placeholder="Search PO number..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-[200px]"
+        />
       </CardHeader>
       <CardContent>
         {isLoading ? (

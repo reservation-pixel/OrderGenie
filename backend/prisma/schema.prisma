@@ -14,6 +14,7 @@ enum RoleName {
   ADMIN
   MANAGEMENT
   OUTLET_MANAGER
+  HEAD_CHEF
 }
 
 enum OutletType {
@@ -77,6 +78,19 @@ enum ClassAItemType {
   CATEGORY
 }
 
+enum RecipeTriggerType {
+  ITEM_NAMES
+  NAME_CONTAINS
+}
+
+enum WastageReason {
+  EXPIRED
+  SPOILED
+  PREP_ERROR
+  DROPPED_DAMAGED
+  OTHER
+}
+
 // ---------- Core entities ----------
 
 model Role {
@@ -105,6 +119,8 @@ model User {
 
   syncLogs             SyncLog[]
   notificationSettings NotificationSetting?
+  wastageEntries       WastageEntry[]
+  soldOutEntries       SoldOutEntry[]
 }
 
 model Outlet {
@@ -128,6 +144,9 @@ model Outlet {
   inventoryTransactions InventoryTransaction[]
   purchaseOrders        PurchaseOrder[]
   syncLogs              SyncLog[]
+  wastageEntries        WastageEntry[]
+  predictedSales        PredictedSale[]
+  soldOutEntries        SoldOutEntry[]
 }
 
 model Sale {
@@ -257,6 +276,7 @@ model PurchaseOrder {
   items PurchaseOrderItem[]
 
   @@unique([outletId, poNumber])
+  @@unique([outletId, petpoojaPurchaseId])
   @@index([outletId, orderDate])
 }
 
@@ -340,4 +360,73 @@ model ClassAItem {
   createdAt DateTime       @default(now())
 
   @@unique([brand, type, value])
+}
+
+model PredictedSale {
+  id           String   @id @default(cuid())
+  outletId     String
+  outlet       Outlet   @relation(fields: [outletId], references: [id])
+  itemName     String
+  stockDate    DateTime @db.Date
+  predictedQty Decimal  @db.Decimal(10, 2)
+  source       String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([outletId, itemName, stockDate])
+  @@index([outletId, stockDate])
+}
+
+model SoldOutEntry {
+  id           String   @id @default(cuid())
+  outletId     String
+  outlet       Outlet   @relation(fields: [outletId], references: [id])
+  itemName     String
+  stockDate    DateTime @db.Date
+  missedQty    Int
+  reportedById String?
+  reportedBy   User?    @relation(fields: [reportedById], references: [id])
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([outletId, itemName, stockDate])
+  @@index([outletId, stockDate])
+}
+
+model WastageEntry {
+  id           String        @id @default(cuid())
+  outletId     String
+  outlet       Outlet        @relation(fields: [outletId], references: [id])
+  itemName     String
+  category     String?
+  quantity     Decimal       @db.Decimal(10, 2)
+  unit         String?
+  reason       WastageReason
+  notes        String?
+  reportedById String?
+  reportedBy   User?         @relation(fields: [reportedById], references: [id])
+  wastageDate  DateTime      @default(now())
+  createdAt    DateTime      @default(now())
+
+  @@index([outletId, wastageDate])
+}
+
+/**
+ * A "recipe" rule for a derived Reconciliation ingredient — e.g. "Big Dough"
+ * isn't a real sold item, its Sales figure is the sum of several real dishes'
+ * sales (every 15" pizza, dough balls, etc). One ingredientName can have
+ * multiple rules (unioned together). The ingredientName must also exist as a
+ * ClassAItem(type: ITEM) for that brand to actually show up as a row.
+ */
+model ReconciliationRecipe {
+  id             String            @id @default(cuid())
+  brand          String
+  ingredientName String
+  triggerType    RecipeTriggerType
+  triggerValues  String[]
+  qtyPerMatch    Decimal           @default(1) @db.Decimal(10, 2)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  @@index([brand, ingredientName])
 }

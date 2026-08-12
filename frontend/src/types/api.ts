@@ -1,4 +1,4 @@
-export type Role = 'ADMIN' | 'MANAGEMENT' | 'OUTLET_MANAGER';
+export type Role = 'ADMIN' | 'MANAGEMENT' | 'OUTLET_MANAGER' | 'HEAD_CHEF';
 
 export interface AuthUser {
   id: string;
@@ -125,6 +125,22 @@ export interface ClassAItemSummaryRow {
   averagePrice: number;
 }
 
+export type WastageReason = 'EXPIRED' | 'SPOILED' | 'PREP_ERROR' | 'DROPPED_DAMAGED' | 'OTHER';
+
+export interface WastageEntry {
+  id: string;
+  outletId: string;
+  outletName: string;
+  itemName: string;
+  category: string | null;
+  quantity: number;
+  unit: string | null;
+  reason: WastageReason;
+  notes: string | null;
+  reportedByName: string | null;
+  wastageDate: string;
+}
+
 export interface InventoryRow {
   id: string;
   outletId: string;
@@ -148,6 +164,41 @@ export interface InventoryDetail extends InventoryRow {
   history: { transactionType: string; quantity: number; unit: string | null; transactionDate: string }[];
 }
 
+export interface PredictedSaleRow {
+  itemName: string;
+  stockDate: string;
+  predictedQty: number;
+  source: string;
+}
+
+export interface SoldOutRow {
+  itemName: string;
+  stockDate: string;
+  soldQty: number;
+  missedQty: number;
+  ratio: number | null;
+  hasEntry: boolean;
+}
+
+export interface ReconciliationRow {
+  itemName: string;
+  classAItemId: string;
+  unit: string | null;
+  hasManualEntry: boolean;
+  opening: number;
+  actualClosing: number;
+  salesToday: number;
+  predictedSales: number;
+  poToday: number;
+  factualClosingAI: number;
+  nextDayOpening: number;
+  nextDayOpeningBuffered: number;
+  salesVariance: number;
+  closingVariance: number;
+  derivedWastage: number;
+  stockDate: string;
+}
+
 export type PurchaseOrderStatus = 'DRAFT' | 'PENDING' | 'PARTIALLY_RECEIVED' | 'RECEIVED' | 'CANCELLED';
 
 export interface PurchaseOrderRow {
@@ -160,6 +211,7 @@ export interface PurchaseOrderRow {
   totalAmount: number;
   orderDate: string;
   expectedDate: string | null;
+  createdAt: string;
 }
 
 export interface PurchaseOrderDetail extends PurchaseOrderRow {

@@ -33,12 +33,16 @@ async function resolveVendorId(name: string | null, petpoojaId: string | null, p
 async function upsertPurchaseOrder(outletId: string, purchase: MappedPurchase): Promise<'created' | 'updated'> {
   const vendorId = await resolveVendorId(purchase.vendorName, purchase.vendorPetpoojaId, purchase.vendorPhone);
 
+  // Keyed on petpoojaPurchaseId (Petpooja's own immutable ID), not poNumber — poNumber
+  // can change value (e.g. once Petpooja starts/stops supplying a reference number for
+  // a record), so it isn't safe as an upsert lookup key; petpoojaPurchaseId is stable.
   const existing = await prisma.purchaseOrder.findUnique({
-    where: { outletId_poNumber: { outletId, poNumber: purchase.poNumber } },
+    where: { outletId_petpoojaPurchaseId: { outletId, petpoojaPurchaseId: purchase.petpoojaPurchaseId } },
     select: { id: true },
   });
 
   const scalarData = {
+    poNumber: purchase.poNumber,
     petpoojaPurchaseId: purchase.petpoojaPurchaseId,
     vendorId,
     invoiceNumber: purchase.invoiceNumber,
@@ -73,7 +77,7 @@ async function upsertPurchaseOrder(outletId: string, purchase: MappedPurchase): 
   }
 
   await prisma.purchaseOrder.create({
-    data: { outletId, poNumber: purchase.poNumber, status, ...scalarData, items: { create: items } },
+    data: { outletId, status, ...scalarData, items: { create: items } },
   });
   return 'created';
 }

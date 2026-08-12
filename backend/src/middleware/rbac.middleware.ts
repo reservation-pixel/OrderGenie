@@ -13,15 +13,16 @@ export function requireRole(...roles: RoleName[]) {
 }
 
 /**
- * Forces the outlet filter to the caller's assigned outlet for OUTLET_MANAGER,
- * regardless of any outletId query param they send. ADMIN/MANAGEMENT are unrestricted.
+ * Forces the outlet filter to the caller's assigned outlet for OUTLET_MANAGER and
+ * HEAD_CHEF, regardless of any outletId query param they send. ADMIN/MANAGEMENT
+ * are unrestricted.
  */
 export function scopeToOutlet(req: Request, _res: Response, next: NextFunction) {
   if (!req.user) throw new AppError('Not authenticated', 401);
 
-  if (req.user.role === RoleName.OUTLET_MANAGER) {
+  if (req.user.role === RoleName.OUTLET_MANAGER || req.user.role === RoleName.HEAD_CHEF) {
     if (!req.user.outletId) {
-      throw new AppError('Outlet Manager account has no assigned outlet', 403);
+      throw new AppError('This account has no assigned outlet', 403);
     }
     req.query.outletId = req.user.outletId;
   }

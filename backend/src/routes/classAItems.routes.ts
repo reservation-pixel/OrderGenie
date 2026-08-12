@@ -1,6 +1,7 @@
 import { Router } from 'express';
+import { RoleName } from '@prisma/client';
 import { verifyJwt } from '../middleware/auth.middleware';
-import { scopeToOutlet } from '../middleware/rbac.middleware';
+import { requireRole, scopeToOutlet } from '../middleware/rbac.middleware';
 import {
   listClassAItemsHandler,
   addClassAItemHandler,
@@ -10,7 +11,7 @@ import {
 
 const router = Router();
 
-router.use(verifyJwt, scopeToOutlet);
+router.use(verifyJwt, requireRole(RoleName.ADMIN, RoleName.MANAGEMENT, RoleName.OUTLET_MANAGER), scopeToOutlet);
 
 // /summary must be registered before /:id so "summary" isn't captured as an id param.
 router.get('/summary', getClassAItemsSummaryHandler);

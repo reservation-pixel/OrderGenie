@@ -13,7 +13,7 @@ export function PurchaseOrderDetailDialog({ id, onClose }: { id: string | null; 
 
   return (
     <Dialog open={Boolean(id)} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-h-[85vh] max-w-3xl overflow-y-auto">
+      <DialogContent className="max-h-[85vh] sm:max-w-3xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{data?.poNumber ?? 'Purchase Order'}</DialogTitle>
         </DialogHeader>

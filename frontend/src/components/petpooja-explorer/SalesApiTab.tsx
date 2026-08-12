@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
+import { DateRangePicker } from '@/components/shared/DateRangePicker';
 import { useOutlets } from '@/hooks/useOutlets';
 import { usePetpoojaExplorer } from '@/hooks/usePetpoojaExplorer';
 import { downloadCsv } from '@/lib/csv';
@@ -87,28 +88,14 @@ export function SalesApiTab({ brand }: { brand: string }) {
         date to get yesterday&apos;s orders.
       </p>
 
-      <div className="flex flex-wrap items-end gap-4">
-        <div className="space-y-1">
-          <Label htmlFor="sales-api-from">Start Date</Label>
-          <input
-            id="sales-api-from"
-            type="date"
-            value={fromDate}
-            onChange={(e) => setFromDate(e.target.value)}
-            className="flex h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
-          />
-        </div>
-        <div className="space-y-1">
-          <Label htmlFor="sales-api-to">End Date</Label>
-          <input
-            id="sales-api-to"
-            type="date"
-            value={toDate}
-            onChange={(e) => setToDate(e.target.value)}
-            className="flex h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
-          />
-        </div>
-      </div>
+      <DateRangePicker
+        from={fromDate}
+        to={toDate}
+        onChange={(nextFrom, nextTo) => {
+          setFromDate(nextFrom);
+          setToDate(nextTo);
+        }}
+      />
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0">

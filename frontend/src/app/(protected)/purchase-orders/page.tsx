@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -20,25 +21,34 @@ const STATUSES = ['all', 'DRAFT', 'PENDING', 'PARTIALLY_RECEIVED', 'RECEIVED', '
 export default function PurchaseOrdersPage() {
   const { customFrom, customTo } = useFilterStore();
   const [status, setStatus] = useState('all');
-  const [page, setPage] = useResettingPage(`${status}|${customFrom}|${customTo}`);
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useResettingPage(`${status}|${customFrom}|${customTo}|${search}`);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  const { data, isLoading, isError } = usePurchaseOrders(page, 25, status);
+  const { data, isLoading, isError } = usePurchaseOrders(page, 25, { status, search: search || undefined });
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-xl font-semibold">Purchase Orders</h1>
-        <Select value={status} onValueChange={(v) => setStatus(v ?? 'all')}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            {STATUSES.map((s) => (
-              <SelectItem key={s} value={s}>{s === 'all' ? 'All Statuses' : s.replace('_', ' ')}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="flex flex-wrap items-center gap-2">
+          <Input
+            placeholder="Search PO number..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-[200px]"
+          />
+          <Select value={status} onValueChange={(v) => setStatus(v ?? 'all')}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              {STATUSES.map((s) => (
+                <SelectItem key={s} value={s}>{s === 'all' ? 'All Statuses' : s.replace('_', ' ')}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <DateRangeFilter />

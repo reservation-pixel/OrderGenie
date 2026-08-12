@@ -6,7 +6,8 @@ import { errorHandler, notFoundHandler } from './middleware/error.middleware';
 
 export const app = express();
 
-app.use(cors({ origin: env.CORS_ORIGIN, credentials: true }));
+const allowedOrigins = env.CORS_ORIGIN.split(',').map((o) => o.trim());
+app.use(cors({ origin: allowedOrigins, credentials: true }));
 app.use(express.json());
 
 app.get('/health', (_req, res) => res.json({ status: 'ok' }));

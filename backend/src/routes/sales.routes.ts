@@ -1,6 +1,7 @@
 import { Router } from 'express';
+import { RoleName } from '@prisma/client';
 import { verifyJwt } from '../middleware/auth.middleware';
-import { scopeToOutlet } from '../middleware/rbac.middleware';
+import { requireRole, scopeToOutlet } from '../middleware/rbac.middleware';
 import {
   listSalesHandler,
   getSaleHandler,
@@ -11,7 +12,7 @@ import {
 
 const router = Router();
 
-router.use(verifyJwt, scopeToOutlet);
+router.use(verifyJwt, requireRole(RoleName.ADMIN, RoleName.MANAGEMENT, RoleName.OUTLET_MANAGER), scopeToOutlet);
 
 // NOTE: /items routes must be registered before /:id so "items" isn't captured as an id param,
 // and /items/categories before /items/:itemName for the same reason.

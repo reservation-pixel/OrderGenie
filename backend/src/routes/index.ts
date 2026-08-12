@@ -10,6 +10,11 @@ import settingsRoutes from './settings.routes';
 import syncRoutes from './sync.routes';
 import petpoojaExplorerRoutes from './petpoojaExplorer.routes';
 import classAItemsRoutes from './classAItems.routes';
+import wastageRoutes from './wastage.routes';
+import webhooksRoutes from './webhooks.routes';
+import reconciliationRoutes from './reconciliation.routes';
+import predictedSalesRoutes from './predictedSales.routes';
+import soldOutRoutes from './soldOut.routes';
 
 const router = Router();
 
@@ -24,5 +29,10 @@ router.use('/settings', settingsRoutes);
 router.use('/sync', syncRoutes);
 router.use('/petpooja-explorer', petpoojaExplorerRoutes);
 router.use('/class-a-items', classAItemsRoutes);
+router.use('/wastage', wastageRoutes);
+router.use('/webhooks', webhooksRoutes);
+router.use('/reconciliation', reconciliationRoutes);
+router.use('/predicted-sales', predictedSalesRoutes);
+router.use('/sold-out', soldOutRoutes);
 
 export default router;

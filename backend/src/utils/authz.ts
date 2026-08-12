@@ -8,7 +8,7 @@ import { RoleName } from '@prisma/client';
  * bypass query filtering entirely.
  */
 export function outletRestrictionFor(req: Request): string | undefined {
-  if (req.user?.role === RoleName.OUTLET_MANAGER) {
+  if (req.user?.role === RoleName.OUTLET_MANAGER || req.user?.role === RoleName.HEAD_CHEF) {
     return req.user.outletId ?? undefined;
   }
   return undefined;

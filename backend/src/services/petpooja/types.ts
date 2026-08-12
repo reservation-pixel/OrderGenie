@@ -97,6 +97,8 @@ export interface PetpoojaPurchaseRecord {
     sender?: PetpoojaPurchaseParty;
     receiver?: PetpoojaPurchaseParty;
     is_transfer_only?: string;
+    reference_number?: string;
+    po_invoice_number?: string;
   };
   item_details?: PetpoojaPurchaseItem[];
   [key: string]: unknown;
@@ -108,4 +110,71 @@ export interface PetpoojaPurchaseResponse {
   message?: string;
   restID?: string;
   purchases?: PetpoojaPurchaseRecord[] | '';
+}
+
+// ---------- Purchase Order Webhook (API 8) ----------
+// Reversed direction: Petpooja POSTs this to a URL we provide, whenever a PO is
+// saved inside Petpooja's own PO module (i.e. before it becomes a real purchase
+// invoice reachable via get_purchase). Shape per Petpooja's Inventory API docs.
+
+export interface PetpoojaPurchaseOrderWebhookItem {
+  itemname?: string;
+  qty?: number | string;
+  price?: number | string;
+  amount?: number | string;
+  lbl_unit?: string;
+  hsn_code?: string;
+  sap_code?: string;
+  description?: string;
+  tax1?: number | string; // CGST rate
+  tax2?: number | string; // SGST rate
+  tax3?: number | string; // IGST rate
+  tax4?: number | string; // CESS rate
+  tax1_amount?: number | string;
+  tax2_amount?: number | string;
+  tax3_amount?: number | string;
+  tax4_amount?: number | string;
+  [key: string]: unknown;
+}
+
+export interface PetpoojaPurchaseOrderWebhookParty {
+  sender_gst?: string;
+  sender_city?: string;
+  sender_name?: string;
+  sender_state?: string;
+  sender_address?: string;
+  sender_contact?: string;
+  receiver_gst?: string;
+  receiver_name?: string;
+  receiver_type?: string;
+  receiver_email?: string | null;
+  receiver_address?: string;
+  receiver_contact?: string | null;
+  receiver_pin_code?: string;
+}
+
+export interface PetpoojaPurchaseOrderWebhookData {
+  id: string;
+  menuSharingCode?: string;
+  receiverType?: string;
+  deliveryDate?: string;
+  poNumber: string;
+  totalTax?: string | number;
+  total?: string | number;
+  roundOff?: string | number;
+  itemDetails?: PetpoojaPurchaseOrderWebhookItem[];
+  restDetails?: {
+    sender?: PetpoojaPurchaseOrderWebhookParty;
+    receiver?: PetpoojaPurchaseOrderWebhookParty;
+  };
+  status?: string;
+  [key: string]: unknown;
+}
+
+export interface PetpoojaPurchaseOrderWebhookPayload {
+  menuSharingCode: string;
+  app_key: string;
+  app_secret: string;
+  access_token: string;
+  data: PetpoojaPurchaseOrderWebhookData;
 }

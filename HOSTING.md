@@ -88,9 +88,33 @@ Also a Render **Web Service** (not a Static Site) — the app uses dynamic route
 2. Settings → Sync Schedule (or the API Explorer tab) → trigger a manual sync and confirm it completes without CORS or auth errors.
 3. Check the backend's Render logs for the `node-cron` startup lines and the first scheduled run a few minutes later, confirming the always-on instance is actually staying up between requests.
 4. Spot-check the Sales page for a known outlet/date to confirm real data is flowing end-to-end.
+5. Give Petpooja your backend's public Purchase Order webhook URL (during onboarding, or via their support if you're already onboarded):
+   ```
+   https://<your-backend-domain>/api/webhooks/petpooja/purchase-order
+   ```
+   It's verified against the same `PETPOOJA_PURCHASE_APP_KEY` / `_APP_SECRET` / `_ACCESS_TOKEN` already set in §2 — no separate credential to issue. Until Petpooja has this URL, Purchase Orders still arrive via the 15-minute poller, just not in real time.
 
-## 5. Ongoing notes
+## 5. Data capture from day one
+
+What's automatic once the backend is deployed, seeded, and running as an always-on instance — no further action needed:
+
+| Job | Cadence | What it does |
+|---|---|---|
+| SALES sync | every 5 min | Pulls yesterday's + today's orders |
+| INVENTORY sync | every 10 min | Pulls current stock levels |
+| PURCHASE sync | every 15 min | Pulls the trailing 7-day PO window |
+| HISTORICAL sync | nightly, 2 AM IST | Re-syncs the trailing 7 days for Sales + Purchase, catching late edits (e.g. a bill corrected in Petpooja after its original sync already ran) |
+| PO webhook | real-time | Once registered (§4 step 5), new/updated POs land immediately instead of waiting for the next poll |
+
+`prisma/seed.ts` enables all four schedules by default, so nothing needs to be toggled on manually after `db:seed` runs.
+
+**The one hard requirement**: the backend instance must stay running continuously (§2 step 6 — Starter tier or above, not Free). A free instance that spins down between requests silently stops every cron job until the next inbound HTTP request wakes it — data gaps would go unnoticed until someone checks.
+
+**What this does *not* backfill**: `HISTORICAL_SYNC_WINDOW_DAYS` is 7 — the nightly self-heal only covers the trailing week. If you need Sales/Purchase history from *before* deploy day permanently stored in the database (not just viewed live via the read-only Sales API / Purchase Order Explorer tabs, which call Petpooja directly and don't write to the DB), that needs a one-off backfill script looping the existing `runSalesSync` / `runPurchaseSync` services over the older date range. Ask if you want this written — it's a small addition, not a schema or architecture change.
+
+## 6. Ongoing notes
 
 - Because both env files (`backend/.env`, `frontend/.env.local`) and `apidocs/`/`api-curls.md` are gitignored, every credential above must be re-entered by hand in Render — there is nothing to "import" from the repo.
 - If Petpooja credentials rotate, update them in Render's dashboard (Environment tab) rather than in any committed file.
 - Render's Starter-tier Postgres has storage/connection limits — watch the `Sale`/`Inventory` row counts as more outlets and history accumulate, and upgrade the DB plan before it fills up rather than after.
+- Turn on Render's automated Postgres backups (Point-in-Time Recovery, under the database's Backups tab) before go-live — once this is live, the database is the only copy of your Sales/Purchase/Wastage/Reconciliation history; there's no re-import path if it's lost.

@@ -4,7 +4,7 @@ const currencyFormatter = new Intl.NumberFormat('en-IN', {
   maximumFractionDigits: 0,
 });
 
-const numberFormatter = new Intl.NumberFormat('en-IN');
+const numberFormatter = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 });
 
 export function formatCurrency(value: number): string {
   return currencyFormatter.format(value ?? 0);
