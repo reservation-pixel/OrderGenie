@@ -53,7 +53,7 @@ Render **Web Service**, not a Static Site — this is a long-running Node proces
    | `ENABLE_STUB_DATA` | `true` (Inventory stock-level + Transfer APIs are still unconfirmed/stubbed) |
    | `SEED_ADMIN_EMAIL` | Your admin login email |
    | `SEED_ADMIN_PASSWORD` | A real password — change this from the example default |
-   | `NODE_ENV` | `production` (Render sets this by default for Web Services, but confirm it's present — `combinedServer.ts` uses it to decide whether Next.js runs in dev or prod mode) |
+   | `NODE_ENV` | **Do not set this one manually.** Render already sets it to `production` automatically at runtime. Setting it explicitly as an env var also affects the *build* step's `npm install`, which then skips `devDependencies` — and `frontend`'s `postcss.config.mjs` needs `@tailwindcss/postcss`, which lives there. Confirmed live: this breaks `next build` with a "Cannot find module" error. |
 
    `schema.prisma` already declares `binaryTargets = ["native", "debian-openssl-3.0.x"]`, which matches Render's Linux runtime.
 

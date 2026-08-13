@@ -42,19 +42,30 @@ export interface PurchaseOrderWebhookResult {
 
 /**
  * Petpooja calls this "menuSharingCode" (their term, used the same way across all
- * 14 Inventory API endpoints); it's the exact same per-outlet identifier this
- * codebase already stores as Outlet.inventorySyncCode for the Transfer/Purchase
- * APIs — confirmed against apidocs/apidocs.txt (real onboarding emails), where the
- * "Menu Sharing Sync Code" values match our seeded inventorySyncCode values
- * verbatim. No separate field needed.
+ * 14 Inventory API endpoints); for outlets with a dedicated Inventory API
+ * integration it's Outlet.inventorySyncCode — confirmed against apidocs/apidocs.txt
+ * (real onboarding emails), where the "Menu Sharing Sync Code" values match our
+ * seeded inventorySyncCode values verbatim.
+ *
+ * Billing outlets (Capiche/Aiko/Bookends — salesSyncCode only, no separate
+ * Inventory API integration) don't have an inventorySyncCode at all, so their PO
+ * webhooks would never resolve on that field alone — every real Capiche/Aiko
+ * outlet has inventorySyncCode = null. This mirrors the same billing/inventory
+ * duality purchaseSync.service.ts already handles on the pull side (billing
+ * outlets' purchases come back keyed by salesSyncCode instead), so resolution
+ * here checks both fields.
  */
 export async function handlePurchaseOrderWebhook(
   payload: PetpoojaPurchaseOrderWebhookPayload
 ): Promise<PurchaseOrderWebhookResult> {
   const menuSharingCode = payload.data.menuSharingCode ?? payload.menuSharingCode;
-  const outlet = menuSharingCode ? await prisma.outlet.findFirst({ where: { inventorySyncCode: menuSharingCode } }) : null;
+  const outlet = menuSharingCode
+    ? await prisma.outlet.findFirst({
+        where: { OR: [{ inventorySyncCode: menuSharingCode }, { salesSyncCode: menuSharingCode }] },
+      })
+    : null;
   if (!outlet) {
-    throw new AppError(`No outlet configured with inventorySyncCode "${menuSharingCode ?? ''}"`, 422);
+    throw new AppError(`No outlet configured with sync code "${menuSharingCode ?? ''}"`, 422);
   }
 
   const mapped = mapPurchaseOrderWebhook(payload.data);
