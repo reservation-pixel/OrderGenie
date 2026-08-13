@@ -72,8 +72,12 @@ export async function handlePurchaseOrderWebhook(
   const vendorId = await resolveVendorId(mapped.vendorName);
   const status = mapped.isCancelled ? PurchaseOrderStatus.CANCELLED : PurchaseOrderStatus.PENDING;
 
+  // Keyed on petpoojaPurchaseId (Petpooja's own immutable "id"), not poNumber — same
+  // reasoning as purchaseSync.service.ts's upsertPurchaseOrder: poNumber isn't a safe
+  // dedup key since Petpooja can change it. This is also what makes webhook retries
+  // safe/idempotent — Petpooja may redeliver the same PO save event more than once.
   const existing = await prisma.purchaseOrder.findUnique({
-    where: { outletId_poNumber: { outletId: outlet.id, poNumber: mapped.poNumber } },
+    where: { outletId_petpoojaPurchaseId: { outletId: outlet.id, petpoojaPurchaseId: mapped.petpoojaPurchaseId } },
     select: { id: true },
   });
 
