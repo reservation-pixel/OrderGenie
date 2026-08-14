@@ -9,8 +9,13 @@ import { listClassAItems } from '../classAItems/classAItems.service';
 // see scripts/import-predicted-sales.ts) covers this item+day — a plain trailing
 // average, not a real model. Missing days count as 0, not excluded.
 const PREDICTED_SALES_WINDOW_DAYS = 7;
-// Suggested safety-stock buffer applied to next-day opening.
-const NEXT_DAY_BUFFER_PCT = 0.15;
+// Safety margin applied to Sales (AI) regardless of source (imported forecast or
+// trailing-average fallback) — the displayed/used prediction is always 15% above
+// the raw figure, so everything derived from it (Closing (AI), Sales Variance)
+// already reflects the buffer. Replaces the old separate "+15%" column, which
+// buffered Next Day Opening instead — the margin now lives on the prediction
+// itself rather than tacked onto next-day stock at the end.
+const SALES_AI_BUFFER_PCT = 0.15;
 
 function toNum(v: unknown): number {
   return v === null || v === undefined ? 0 : Number(v);
@@ -222,7 +227,6 @@ export interface ReconciliationRowInputs {
 export interface ReconciliationRow extends ReconciliationRowInputs {
   factualClosingAI: number;
   nextDayOpening: number;
-  nextDayOpeningBuffered: number;
   salesVariance: number;
   closingVariance: number;
   derivedWastage: number;
@@ -242,7 +246,6 @@ function round2(n: number): number {
 export function computeReconciliationRow(inputs: ReconciliationRowInputs, stockDate: string): ReconciliationRow {
   const factualClosingAI = inputs.opening - inputs.predictedSales;
   const nextDayOpening = inputs.poToday + inputs.actualClosing;
-  const nextDayOpeningBuffered = nextDayOpening * (1 + NEXT_DAY_BUFFER_PCT);
   const salesVariance = inputs.salesToday - inputs.predictedSales;
   const closingVariance = inputs.actualClosing - factualClosingAI;
   const derivedWastage = inputs.opening - inputs.salesToday - inputs.actualClosing;
@@ -252,7 +255,6 @@ export function computeReconciliationRow(inputs: ReconciliationRowInputs, stockD
     predictedSales: round2(inputs.predictedSales),
     factualClosingAI: round2(factualClosingAI),
     nextDayOpening: round2(nextDayOpening),
-    nextDayOpeningBuffered: round2(nextDayOpeningBuffered),
     salesVariance: round2(salesVariance),
     closingVariance: round2(closingVariance),
     derivedWastage: round2(derivedWastage),
@@ -304,6 +306,7 @@ export async function getReconciliationDashboard(query: ReconciliationQuery) {
         }
         predictedSales = predictedSum / PREDICTED_SALES_WINDOW_DAYS;
       }
+      predictedSales *= 1 + SALES_AI_BUFFER_PCT;
 
       const manual = manualEntries.get(itemName);
 

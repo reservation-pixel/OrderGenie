@@ -29,15 +29,48 @@ function todayIso(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-function varianceBadge(variance: number, base: number) {
+function varianceTone(variance: number, base: number): 'alert' | 'normal' {
   const pct = base !== 0 ? (Math.abs(variance) / Math.abs(base)) * 100 : variance !== 0 ? 100 : 0;
-  const alert = pct > VARIANCE_ALERT_PCT;
+  return pct > VARIANCE_ALERT_PCT ? 'alert' : 'normal';
+}
+
+function varianceBadge(variance: number, base: number) {
+  const alert = varianceTone(variance, base) === 'alert';
   return (
     <Badge variant={alert ? 'destructive' : 'secondary'}>
       {variance > 0 ? '+' : ''}
       {formatNumber(variance)}
     </Badge>
   );
+}
+
+/** Shared editable Opening/Actual Closing + save state, used by both the table row (tablet/desktop) and card (mobile) renderings of the same data row. */
+function useRowEditor(row: ReconciliationRow, outletId: string, date: string) {
+  const upsert = useUpsertReconciliationEntry();
+  const [opening, setOpening] = useState(String(row.opening));
+  const [actualClosing, setActualClosing] = useState(String(row.actualClosing));
+
+  const dirty = Number(opening || 0) !== row.opening || Number(actualClosing || 0) !== row.actualClosing;
+
+  function handleSave() {
+    upsert.mutate({
+      outletId,
+      itemName: row.itemName,
+      date,
+      opening: Number(opening || 0),
+      actualClosing: Number(actualClosing || 0),
+    });
+  }
+
+  return {
+    opening,
+    setOpening: (v: string) => setOpening(sanitizeQty(v)),
+    actualClosing,
+    setActualClosing: (v: string) => setActualClosing(sanitizeQty(v)),
+    dirty,
+    saving: upsert.isPending,
+    handleSave,
+  };
 }
 
 export function BrandReconciliationTab({ brand, outletId }: { brand: string; outletId: string }) {
@@ -70,8 +103,8 @@ export function BrandReconciliationTab({ brand, outletId }: { brand: string; out
             Showing reconciliation for <strong>{formatDate(date)}</strong> — only items selected in{' '}
             <strong>Class A Items</strong> for {brand} appear here. Opening and Actual Closing are entered manually;
             Sales/PO are pulled from real synced data; Predicted values use an imported forecast where one's
-            available for that item and date, falling back to a 7-day trailing average otherwise. Change the date
-            via the date filter above.
+            available for that item and date, falling back to a 7-day trailing average otherwise, plus a 15% safety
+            margin on top either way. Change the date via the date filter above.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -101,7 +134,8 @@ export function BrandReconciliationTab({ brand, outletId }: { brand: string; out
             </p>
           ) : (
             <>
-              <div className="overflow-x-auto">
+              {/* Tablet and up: full data table, horizontally scrollable if it still doesn't fit. */}
+              <div className="hidden overflow-x-auto md:block">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -114,7 +148,6 @@ export function BrandReconciliationTab({ brand, outletId }: { brand: string; out
                       <TableHead className="text-right">Sales (AI)</TableHead>
                       <TableHead className="text-right">PO</TableHead>
                       <TableHead className="text-right">Next Day Opening</TableHead>
-                      <TableHead className="text-right">+15%</TableHead>
                       <TableHead className="text-right">Sales Variance</TableHead>
                       <TableHead className="text-right">Closing Variance</TableHead>
                       <TableHead className="text-right">Wastage</TableHead>
@@ -123,7 +156,7 @@ export function BrandReconciliationTab({ brand, outletId }: { brand: string; out
                   </TableHeader>
                   <TableBody>
                     {data.rows.map((row) => (
-                      <ReconciliationRowCells
+                      <ReconciliationTableRow
                         key={row.itemName}
                         row={row}
                         outletId={outletId}
@@ -135,20 +168,35 @@ export function BrandReconciliationTab({ brand, outletId }: { brand: string; out
                   </TableBody>
                 </Table>
               </div>
+
+              {/* Mobile: stacked cards instead of a cramped 13-column table. */}
+              <div className="space-y-3 md:hidden">
+                {data.rows.map((row) => (
+                  <ReconciliationCard
+                    key={row.itemName}
+                    row={row}
+                    outletId={outletId}
+                    brand={brand}
+                    date={date}
+                    canManageSelection={!isHeadChef}
+                  />
+                ))}
+              </div>
+
               <Pagination meta={data.meta} onPageChange={setPage} />
             </>
           )}
 
           {!isAllOutlets && !isHeadChef && (
-            <div className="flex items-end gap-2 border-t pt-3">
-              <div className="space-y-1">
+            <div className="flex flex-wrap items-end gap-2 border-t pt-3">
+              <div className="w-full space-y-1 sm:w-auto">
                 <Label htmlFor="new-ingredient">Add Ingredient</Label>
                 <Input
                   id="new-ingredient"
                   value={newItemName}
                   onChange={(e) => setNewItemName(e.target.value)}
                   placeholder="e.g. Flour 1kg"
-                  className="h-8 w-56"
+                  className="h-8 w-full sm:w-56"
                 />
               </div>
               <Button
@@ -167,39 +215,17 @@ export function BrandReconciliationTab({ brand, outletId }: { brand: string; out
   );
 }
 
-function ReconciliationRowCells({
-  row,
-  outletId,
-  brand,
-  date,
-  canManageSelection,
-}: {
+interface RowProps {
   row: ReconciliationRow;
   outletId: string;
   brand: string;
   date: string;
   canManageSelection: boolean;
-}) {
-  const upsert = useUpsertReconciliationEntry();
+}
+
+function ReconciliationTableRow({ row, outletId, brand, date, canManageSelection }: RowProps) {
+  const editor = useRowEditor(row, outletId, date);
   const removeClassAItem = useRemoveClassAItem();
-  const [opening, setOpening] = useState(String(row.opening));
-  const [actualClosing, setActualClosing] = useState(String(row.actualClosing));
-
-  const dirty = Number(opening) !== row.opening || Number(actualClosing) !== row.actualClosing;
-
-  function handleSave() {
-    upsert.mutate({
-      outletId,
-      itemName: row.itemName,
-      date,
-      opening: Number(opening),
-      actualClosing: Number(actualClosing),
-    });
-  }
-
-  function handleRemove() {
-    removeClassAItem.mutate({ id: row.classAItemId, brand });
-  }
 
   return (
     <TableRow>
@@ -217,8 +243,8 @@ function ReconciliationRowCells({
           type="number"
           step="1"
           min="0"
-          value={opening}
-          onChange={(e) => setOpening(sanitizeQty(e.target.value))}
+          value={editor.opening}
+          onChange={(e) => editor.setOpening(e.target.value)}
           className="h-8 w-24 text-right"
         />
       </TableCell>
@@ -228,8 +254,8 @@ function ReconciliationRowCells({
           type="number"
           step="1"
           min="0"
-          value={actualClosing}
-          onChange={(e) => setActualClosing(sanitizeQty(e.target.value))}
+          value={editor.actualClosing}
+          onChange={(e) => editor.setActualClosing(e.target.value)}
           className="h-8 w-24 text-right"
         />
       </TableCell>
@@ -237,7 +263,6 @@ function ReconciliationRowCells({
       <TableCell className="text-right">{formatNumber(row.predictedSales)}</TableCell>
       <TableCell className="text-right">{formatNumber(row.poToday)}</TableCell>
       <TableCell className="text-right">{formatNumber(row.nextDayOpening)}</TableCell>
-      <TableCell className="text-right">{formatNumber(row.nextDayOpeningBuffered)}</TableCell>
       <TableCell className="text-right">{varianceBadge(row.salesVariance, row.predictedSales)}</TableCell>
       <TableCell className="text-right">{varianceBadge(row.closingVariance, row.factualClosingAI)}</TableCell>
       <TableCell className="text-right">
@@ -245,13 +270,13 @@ function ReconciliationRowCells({
       </TableCell>
       <TableCell>
         <div className="flex items-center gap-1">
-          <Button size="sm" variant="outline" disabled={!dirty || upsert.isPending} onClick={handleSave}>
+          <Button size="sm" variant="outline" disabled={!editor.dirty || editor.saving} onClick={editor.handleSave}>
             Save
           </Button>
           {canManageSelection && (
             <button
               type="button"
-              onClick={handleRemove}
+              onClick={() => removeClassAItem.mutate({ id: row.classAItemId, brand })}
               title="Remove from selection"
               className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-destructive"
             >
@@ -261,5 +286,98 @@ function ReconciliationRowCells({
         </div>
       </TableCell>
     </TableRow>
+  );
+}
+
+function StatTile({ label, value, tone }: { label: string; value: string; tone?: 'alert' | 'normal' }) {
+  return (
+    <div className="rounded-md bg-muted/50 px-2.5 py-1.5">
+      <div className="text-[11px] text-muted-foreground">{label}</div>
+      <div className={tone === 'alert' ? 'font-medium text-destructive' : 'font-medium'}>{value}</div>
+    </div>
+  );
+}
+
+function ReconciliationCard({ row, outletId, brand, date, canManageSelection }: RowProps) {
+  const editor = useRowEditor(row, outletId, date);
+  const removeClassAItem = useRemoveClassAItem();
+
+  return (
+    <Card className="p-0">
+      <CardContent className="space-y-3 p-3">
+        <div className="flex items-start justify-between gap-2">
+          <div className="font-medium leading-snug">
+            {row.itemName}
+            {row.unit && <span className="ml-1.5 text-xs text-muted-foreground">({row.unit})</span>}
+            {!row.hasManualEntry && (
+              <Badge variant="outline" className="ml-2 align-middle">
+                Not entered
+              </Badge>
+            )}
+          </div>
+          {canManageSelection && (
+            <button
+              type="button"
+              onClick={() => removeClassAItem.mutate({ id: row.classAItemId, brand })}
+              title="Remove from selection"
+              className="shrink-0 rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-destructive"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          <div className="space-y-1">
+            <Label className="text-[11px] text-muted-foreground">Opening</Label>
+            <Input
+              type="number"
+              step="1"
+              min="0"
+              value={editor.opening}
+              onChange={(e) => editor.setOpening(e.target.value)}
+              className="h-8"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-[11px] text-muted-foreground">Actual Closing</Label>
+            <Input
+              type="number"
+              step="1"
+              min="0"
+              value={editor.actualClosing}
+              onChange={(e) => editor.setActualClosing(e.target.value)}
+              className="h-8"
+            />
+          </div>
+          <StatTile label="Closing (AI)" value={formatNumber(row.factualClosingAI)} />
+          <StatTile label="Sales" value={formatNumber(row.salesToday)} />
+          <StatTile label="Sales (AI)" value={formatNumber(row.predictedSales)} />
+          <StatTile label="PO" value={formatNumber(row.poToday)} />
+          <StatTile label="Next Day Opening" value={formatNumber(row.nextDayOpening)} />
+          <StatTile
+            label="Sales Variance"
+            value={`${row.salesVariance > 0 ? '+' : ''}${formatNumber(row.salesVariance)}`}
+            tone={varianceTone(row.salesVariance, row.predictedSales)}
+          />
+          <StatTile
+            label="Closing Variance"
+            value={`${row.closingVariance > 0 ? '+' : ''}${formatNumber(row.closingVariance)}`}
+            tone={varianceTone(row.closingVariance, row.factualClosingAI)}
+          />
+          <StatTile label="Wastage" value={formatNumber(row.derivedWastage)} tone={row.derivedWastage > 0 ? 'alert' : 'normal'} />
+        </div>
+
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={!editor.dirty || editor.saving}
+          onClick={editor.handleSave}
+          className="w-full"
+        >
+          Save
+        </Button>
+      </CardContent>
+    </Card>
   );
 }
