@@ -99,6 +99,23 @@ async function recordTransfer(outlet: Outlet, transfer: MappedTransfer): Promise
       : InventoryTransactionType.ADJUSTMENT;
 
   for (const item of transfer.items) {
+    // The Purchase sync re-fetches a rolling trailing window every run (every 15 min on
+    // cron), so the same transfer reappears in `records` on every cycle until it ages out
+    // of that window — without this check, each cycle created a brand new duplicate row
+    // for the same real transfer (confirmed live: one table reached 300MB+ in about a day
+    // from this alone). Natural key: outlet + transfer number + item + direction.
+    const existing = await prisma.inventoryTransaction.findFirst({
+      where: {
+        outletId: outlet.id,
+        referenceType: 'TRANSFER',
+        referenceId: transfer.transferNumber,
+        itemName: item.itemName,
+        transactionType,
+      },
+      select: { id: true },
+    });
+    if (existing) continue;
+
     await prisma.inventoryTransaction.create({
       data: {
         outletId: outlet.id,
