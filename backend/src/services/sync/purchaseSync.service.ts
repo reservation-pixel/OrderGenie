@@ -89,7 +89,7 @@ async function upsertPurchaseOrder(outletId: string, purchase: MappedPurchase): 
  * this can happen for outlets not yet in our known outlet list (Petpooja's live data
  * already showed at least one, "Ahmedabad store 2.0", that isn't in our seed).
  */
-async function recordTransfer(outlet: Outlet, transfer: MappedTransfer): Promise<void> {
+export async function recordTransfer(outlet: Outlet, transfer: MappedTransfer): Promise<void> {
   const isSender = transfer.senderName?.toLowerCase() === outlet.name.toLowerCase();
   const isReceiver = transfer.receiverName?.toLowerCase() === outlet.name.toLowerCase();
   const transactionType = isSender

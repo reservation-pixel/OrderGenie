@@ -1,5 +1,5 @@
 import type { PetpoojaPurchaseOrderWebhookData, PetpoojaPurchaseOrderWebhookItem } from '../types';
-import type { MappedPurchase, MappedPurchaseItem } from './purchaseMapper';
+import type { MappedPurchase, MappedPurchaseItem, MappedTransfer } from './purchaseMapper';
 
 function num(v: unknown, fallback = 0): number {
   if (v === null || v === undefined || v === '') return fallback;
@@ -35,6 +35,33 @@ function mapItem(item: PetpoojaPurchaseOrderWebhookItem): MappedPurchaseItem {
 export interface MappedPurchaseOrder extends MappedPurchase {
   expectedDate: Date | undefined;
   isCancelled: boolean;
+}
+
+/**
+ * Same discriminator as the pull API (purchaseMapper.ts's isTransferRecord) —
+ * receiverType "Kitchen" instead of "Supplier" marks an internal outlet-to-outlet
+ * transfer rather than a real vendor purchase. Confirmed live via a real webhook
+ * delivery (Capiche Piplod -> Surat Store, receiverType "Kitchen").
+ */
+export function isTransferWebhookRecord(data: PetpoojaPurchaseOrderWebhookData): boolean {
+  return data.receiverType === 'Kitchen' || data.restDetails?.receiver?.receiver_type === 'Kitchen';
+}
+
+export function mapTransferFromWebhook(data: PetpoojaPurchaseOrderWebhookData): MappedTransfer {
+  const items = (data.itemDetails ?? []).map((i) => ({
+    itemName: i.itemname ?? 'Unknown Item',
+    quantity: num(i.qty),
+    unit: i.lbl_unit ?? null,
+  }));
+
+  return {
+    transferNumber: data.id,
+    transferDate: parsePetpoojaDate(data.deliveryDate) ?? new Date(),
+    senderName: data.restDetails?.sender?.sender_name?.trim() || null,
+    receiverName: data.restDetails?.receiver?.receiver_name?.trim() || null,
+    items,
+    rawPayload: data as unknown as MappedTransfer['rawPayload'],
+  };
 }
 
 /**
