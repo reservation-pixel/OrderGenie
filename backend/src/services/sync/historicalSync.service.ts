@@ -4,17 +4,19 @@ import { HISTORICAL_SYNC_WINDOW_DAYS } from '../../config/constants';
 import { runSalesSync } from './salesSync.service';
 import { runPurchaseSync } from './purchaseSync.service';
 
-// InventoryTransaction stores a raw JSON payload per row and gets written to
-// frequently (every Purchase sync cycle picks up internal transfers) — without a
-// retention window it grows unbounded. Only the trailing week is kept; older rows
-// aren't needed for anything currently in the app (Reconciliation/Sold Out read
-// from Sale/Inventory/PurchaseOrder, not InventoryTransaction history).
-const INVENTORY_TRANSACTION_RETENTION_DAYS = 7;
+// Only the trailing week of operational data is kept at all — Sale/PurchaseOrder
+// (and their line items, via cascade) and InventoryTransaction older than this are
+// auto-deleted nightly. Deliberate: this app only needs recent history for
+// Reconciliation (7-day trailing average) and day-of Sold Out lookups; unbounded
+// retention is what caused a hosting provider's disk to fill up entirely from
+// InventoryTransaction's raw JSON payloads. Sales/Item Sales/Reports pages will
+// only ever show this trailing window going forward.
+const DATA_RETENTION_DAYS = 7;
 
 /**
  * Nightly re-sync of the trailing window to catch late corrections (e.g. a bill
  * edited in Petpooja after the original 5-minute sales sync already ran), plus
- * pruning old InventoryTransaction rows to keep storage bounded.
+ * pruning data older than DATA_RETENTION_DAYS to keep storage bounded.
  */
 export async function runHistoricalSync(triggerType: TriggerType, triggeredByUserId?: string) {
   const today = new Date();
@@ -33,8 +35,21 @@ export async function runHistoricalSync(triggerType: TriggerType, triggeredByUse
   const purchaseResult = await runPurchaseSync(triggerType, purchaseFrom, purchaseTo, triggeredByUserId);
 
   const cutoff = new Date(today);
-  cutoff.setDate(cutoff.getDate() - INVENTORY_TRANSACTION_RETENTION_DAYS);
-  const pruned = await prisma.inventoryTransaction.deleteMany({ where: { transactionDate: { lt: cutoff } } });
+  cutoff.setDate(cutoff.getDate() - DATA_RETENTION_DAYS);
 
-  return { salesResults, purchaseResult, prunedInventoryTransactions: pruned.count };
+  // Sale -> SaleItem and PurchaseOrder -> PurchaseOrderItem both cascade on delete
+  // (schema.prisma), so pruning the parent rows is enough to clean up line items too.
+  const [prunedSales, prunedPurchaseOrders, prunedInventoryTransactions] = await Promise.all([
+    prisma.sale.deleteMany({ where: { orderDate: { lt: cutoff } } }),
+    prisma.purchaseOrder.deleteMany({ where: { orderDate: { lt: cutoff } } }),
+    prisma.inventoryTransaction.deleteMany({ where: { transactionDate: { lt: cutoff } } }),
+  ]);
+
+  return {
+    salesResults,
+    purchaseResult,
+    prunedSales: prunedSales.count,
+    prunedPurchaseOrders: prunedPurchaseOrders.count,
+    prunedInventoryTransactions: prunedInventoryTransactions.count,
+  };
 }
