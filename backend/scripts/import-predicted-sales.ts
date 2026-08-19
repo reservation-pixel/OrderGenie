@@ -51,7 +51,7 @@ function cellDateString(value: unknown): string | null {
   return DATE_RE.test(str) ? str : null;
 }
 
-async function chunkedUpsert(rows: PendingUpsert[], batchSize = 50) {
+async function chunkedUpsert(rows: PendingUpsert[], batchSize = 10) {
   for (let i = 0; i < rows.length; i += batchSize) {
     const batch = rows.slice(i, i + batchSize);
     await Promise.all(
