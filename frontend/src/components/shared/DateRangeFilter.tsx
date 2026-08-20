@@ -29,7 +29,9 @@ export function DateRangeFilter() {
           setDraftTo(nextTo);
         }}
       />
-      <Button size="sm" disabled={!draftFrom || !draftTo} onClick={handleFetch} variant={dirty ? 'default' : 'outline'}>
+      {/* size="lg" to match DateRangePicker's trigger button height (h-9) — size="sm" (h-7)
+          left an 8px mismatch between the two buttons sitting side by side. */}
+      <Button size="lg" disabled={!draftFrom || !draftTo} onClick={handleFetch} variant={dirty ? 'default' : 'outline'}>
         <RefreshCw className="mr-1 h-4 w-4" />
         Fetch
       </Button>

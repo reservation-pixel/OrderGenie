@@ -1,11 +1,13 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { RefreshCw } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
+import { DateRangePicker } from '@/components/shared/DateRangePicker';
 import { useOutlets } from '@/hooks/useOutlets';
 import { usePetpoojaExplorer } from '@/hooks/usePetpoojaExplorer';
 import { downloadCsv } from '@/lib/csv';
@@ -50,6 +52,10 @@ function dayCount(fromDate: string, toDate: string): number {
   return Math.max(1, Math.round((to.getTime() - from.getTime()) / (24 * 60 * 60 * 1000)) + 1);
 }
 
+function buildFetchKey(apiType: TabId, fromDate: string, toDate: string, outletIds: string[]): string {
+  return `${apiType}|${fromDate}|${toDate}|${outletIds.slice().sort().join(',')}`;
+}
+
 export default function ApiExplorerPage() {
   const [apiType, setApiType] = useState<TabId>('orders');
   const [fromDate, setFromDate] = useState(todayIso());
@@ -58,6 +64,12 @@ export default function ApiExplorerPage() {
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [result, setResult] = useState<ExplorerResult | null>(null);
   const [webhookSubTab, setWebhookSubTab] = useState<'processed' | 'raw-log'>('processed');
+  // Tracks the (apiType, dates, outlets) key as of the last click of Fetch, so the
+  // button can show a dirty/solid state after changing filters — same visual language
+  // as DateRangeFilter's Fetch button elsewhere in the app. Initialized (and reset on
+  // tab change) to the CURRENT key, not null, so the button starts clean/outline
+  // instead of appearing dirty before anything has actually changed.
+  const [lastFetchedKey, setLastFetchedKey] = useState(() => buildFetchKey('orders', todayIso(), todayIso(), []));
 
   const { data: outlets } = useOutlets();
   const explorer = usePetpoojaExplorer();
@@ -65,19 +77,25 @@ export default function ApiExplorerPage() {
   const outletsForTab = useMemo(() => eligibleOutlets(outlets, apiType), [outlets, apiType]);
 
   function handleTabChange(value: string) {
-    setApiType(value as TabId);
+    const nextTab = value as TabId;
+    setApiType(nextTab);
     setSelectedOutletIds([]);
     setResult(null);
     setExpanded(new Set());
+    setLastFetchedKey(buildFetchKey(nextTab, fromDate, toDate, []));
   }
 
   function toggleOutlet(id: string, checked: boolean) {
     setSelectedOutletIds((prev) => (checked ? [...prev, id] : prev.filter((x) => x !== id)));
   }
 
+  const fetchKey = buildFetchKey(apiType, fromDate, toDate, selectedOutletIds);
+  const dirty = lastFetchedKey !== fetchKey;
+
   function handleFetch() {
     if (apiType === 'purchase_order_webhook') return;
     setExpanded(new Set());
+    setLastFetchedKey(fetchKey);
     explorer.mutate(
       { apiType, outletIds: selectedOutletIds, fromDate, toDate },
       { onSuccess: (data) => setResult(data) }
@@ -141,27 +159,24 @@ export default function ApiExplorerPage() {
               </Tabs>
             ) : (
               <>
-                <div className="flex flex-wrap items-end gap-4">
-                  <div className="space-y-1">
-                    <Label htmlFor="fromDate">Start Date</Label>
-                    <input
-                      id="fromDate"
-                      type="date"
-                      value={fromDate}
-                      onChange={(e) => setFromDate(e.target.value)}
-                      className="flex h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="toDate">End Date</Label>
-                    <input
-                      id="toDate"
-                      type="date"
-                      value={toDate}
-                      onChange={(e) => setToDate(e.target.value)}
-                      className="flex h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
-                    />
-                  </div>
+                <div className="flex flex-wrap items-end gap-3">
+                  <DateRangePicker
+                    from={fromDate}
+                    to={toDate}
+                    onChange={(nextFrom, nextTo) => {
+                      setFromDate(nextFrom);
+                      setToDate(nextTo);
+                    }}
+                  />
+                  <Button
+                    size="lg"
+                    disabled={selectedOutletIds.length === 0 || explorer.isPending}
+                    onClick={handleFetch}
+                    variant={dirty ? 'default' : 'outline'}
+                  >
+                    <RefreshCw className="mr-1 h-4 w-4" />
+                    {explorer.isPending ? 'Fetching...' : fetchLabel}
+                  </Button>
                 </div>
 
                 <Card>
@@ -195,14 +210,6 @@ export default function ApiExplorerPage() {
                     </div>
                   </CardContent>
                 </Card>
-
-                <Button
-                  className="w-full"
-                  disabled={selectedOutletIds.length === 0 || explorer.isPending}
-                  onClick={handleFetch}
-                >
-                  {explorer.isPending ? 'Fetching...' : fetchLabel}
-                </Button>
 
                 {result && result.apiType === t && (
                   <ExplorerResults result={result} expanded={expanded} setExpanded={setExpanded} onExportCsv={exportCsv} onExportJson={exportJson} />
