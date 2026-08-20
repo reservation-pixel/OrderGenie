@@ -91,6 +91,11 @@ enum WastageReason {
   OTHER
 }
 
+enum WebhookOutcome {
+  SUCCESS
+  REJECTED
+}
+
 // ---------- Core entities ----------
 
 model Role {
@@ -147,6 +152,7 @@ model Outlet {
   wastageEntries        WastageEntry[]
   predictedSales        PredictedSale[]
   soldOutEntries        SoldOutEntry[]
+  purchaseOrderWebhookLogs PurchaseOrderWebhookLog[]
 }
 
 model Sale {
@@ -295,6 +301,31 @@ model PurchaseOrderItem {
   cess            Decimal       @default(0) @db.Decimal(12, 2)
   receivedQty     Decimal       @default(0) @db.Decimal(12, 2)
   pendingQty      Decimal       @default(0) @db.Decimal(12, 2)
+}
+
+// Audit trail of every inbound PO webhook call from Petpooja, success or rejected.
+// purchaseOrderId is deliberately a plain string, not a relation: PurchaseOrder rows
+// are pruned after 7 days by historicalSync.service.ts, and a hard FK would eventually
+// fail once a log outlives the row it produced. The log must survive independently.
+model PurchaseOrderWebhookLog {
+  id                 String               @id @default(cuid())
+  receivedAt         DateTime             @default(now())
+  outletId           String?
+  outlet             Outlet?              @relation(fields: [outletId], references: [id])
+  petpoojaPurchaseId String?
+  poNumber           String?
+  menuSharingCode    String?
+  outcome            WebhookOutcome
+  httpStatusCode     Int
+  failureReason      String?
+  status             PurchaseOrderStatus?
+  writeResult        String?
+  purchaseOrderId    String?
+  rawPayload         Json
+
+  @@index([outletId, receivedAt])
+  @@index([outcome, receivedAt])
+  @@index([petpoojaPurchaseId])
 }
 
 model SyncLog {

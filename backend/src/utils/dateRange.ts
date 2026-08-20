@@ -3,16 +3,24 @@ export interface DateRange {
   to: Date;
 }
 
+/**
+ * Day boundaries computed in fixed-offset IST (UTC+5:30, no DST), not server-local
+ * time. The server (Render) runs with no TZ set, i.e. UTC — plain `Date.setHours()`
+ * would compute boundaries ~5.5h off from the intended Asia/Kolkata calendar day
+ * (same timezone the app already commits to via CRON_TIMEZONE in constants.ts).
+ * Only getTime()/setUTCHours() are used so this is deterministic regardless of the
+ * host's local timezone.
+ */
+const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+
 function startOfDay(d: Date): Date {
-  const copy = new Date(d);
-  copy.setHours(0, 0, 0, 0);
-  return copy;
+  const shifted = new Date(d.getTime() + IST_OFFSET_MS);
+  shifted.setUTCHours(0, 0, 0, 0);
+  return new Date(shifted.getTime() - IST_OFFSET_MS);
 }
 
 function endOfDay(d: Date): Date {
-  const copy = new Date(d);
-  copy.setHours(23, 59, 59, 999);
-  return copy;
+  return new Date(startOfDay(d).getTime() + 24 * 60 * 60 * 1000 - 1);
 }
 
 export function resolveDateRange(query: {

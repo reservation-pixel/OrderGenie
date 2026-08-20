@@ -38,6 +38,7 @@ export interface PurchaseOrderWebhookResult {
   outletId: string;
   purchaseOrderId: string;
   result: 'created' | 'updated';
+  status: PurchaseOrderStatus;
 }
 
 /**
@@ -118,11 +119,11 @@ export async function handlePurchaseOrderWebhook(
       where: { id: existing.id },
       data: { ...scalarData, items: { deleteMany: {}, create: items } },
     });
-    return { outletId: outlet.id, purchaseOrderId: existing.id, result: 'updated' };
+    return { outletId: outlet.id, purchaseOrderId: existing.id, result: 'updated', status };
   }
 
   const created = await prisma.purchaseOrder.create({
     data: { outletId: outlet.id, poNumber: mapped.poNumber, ...scalarData, items: { create: items } },
   });
-  return { outletId: outlet.id, purchaseOrderId: created.id, result: 'created' };
+  return { outletId: outlet.id, purchaseOrderId: created.id, result: 'created', status };
 }

@@ -12,6 +12,7 @@ import { downloadCsv } from '@/lib/csv';
 import { triggerBlobDownload } from '@/lib/download';
 import { ExplorerResults } from '@/components/petpooja-explorer/ExplorerResults';
 import { ReceivedPurchaseOrdersTab } from '@/components/petpooja-explorer/ReceivedPurchaseOrdersTab';
+import { WebhookDeliveryLogTab } from '@/components/petpooja-explorer/WebhookDeliveryLogTab';
 import type { ExplorerApiType, ExplorerResult, Outlet } from '@/types/api';
 
 type TabId = ExplorerApiType | 'purchase_order_webhook';
@@ -56,6 +57,7 @@ export default function ApiExplorerPage() {
   const [selectedOutletIds, setSelectedOutletIds] = useState<string[]>([]);
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [result, setResult] = useState<ExplorerResult | null>(null);
+  const [webhookSubTab, setWebhookSubTab] = useState<'processed' | 'raw-log'>('processed');
 
   const { data: outlets } = useOutlets();
   const explorer = usePetpoojaExplorer();
@@ -125,7 +127,18 @@ export default function ApiExplorerPage() {
             <p className="text-sm text-muted-foreground">{TAB_CONFIG[t].hint}</p>
 
             {t === 'purchase_order_webhook' ? (
-              <ReceivedPurchaseOrdersTab />
+              <Tabs value={webhookSubTab} onValueChange={(v) => setWebhookSubTab(v as 'processed' | 'raw-log')}>
+                <TabsList>
+                  <TabsTrigger value="processed">Processed Purchase Orders</TabsTrigger>
+                  <TabsTrigger value="raw-log">Webhook Delivery Log</TabsTrigger>
+                </TabsList>
+                <TabsContent value="processed" className="space-y-4">
+                  <ReceivedPurchaseOrdersTab />
+                </TabsContent>
+                <TabsContent value="raw-log" className="space-y-4">
+                  <WebhookDeliveryLogTab />
+                </TabsContent>
+              </Tabs>
             ) : (
               <>
                 <div className="flex flex-wrap items-end gap-4">

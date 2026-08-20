@@ -233,6 +233,31 @@ export interface PurchaseOrderDetail extends PurchaseOrderRow {
   }[];
 }
 
+export type WebhookOutcome = 'SUCCESS' | 'REJECTED';
+
+export interface PurchaseOrderWebhookLogRow {
+  id: string;
+  receivedAt: string;
+  outletId: string | null;
+  outletName: string | null;
+  petpoojaPurchaseId: string | null;
+  poNumber: string | null;
+  menuSharingCode: string | null;
+  outcome: WebhookOutcome;
+  httpStatusCode: number;
+  failureReason: string | null;
+  status: PurchaseOrderStatus | null;
+  writeResult: string | null;
+}
+
+export interface PurchaseOrderWebhookLogDetail extends PurchaseOrderWebhookLogRow {
+  rawPayload: unknown;
+  currentPurchaseOrder:
+    | { id: string; poNumber: string; status: PurchaseOrderStatus; orderDate: string; updatedAt: string }
+    | { pruned: true; id: string }
+    | null;
+}
+
 export interface OutletOverviewRow {
   id: string;
   name: string;
