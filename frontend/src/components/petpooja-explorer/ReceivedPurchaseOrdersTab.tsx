@@ -33,7 +33,7 @@ export function ReceivedPurchaseOrdersTab() {
   const [page, setPage] = useResettingPage(`${status}|${outletId}|${customFrom}|${customTo}|${dateField}|${search}`);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  const { data, isLoading, isError } = usePurchaseOrders(page, 25, { status, dateField, search: search || undefined });
+  const { data, isLoading, isError } = usePurchaseOrders(page, 12, { status, dateField, search: search || undefined });
 
   return (
     <div className="space-y-4">

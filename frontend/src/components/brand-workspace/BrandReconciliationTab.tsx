@@ -81,7 +81,7 @@ export function BrandReconciliationTab({ brand, outletId }: { brand: string; out
   const date = customTo ?? todayIso();
   const filterKey = `${outletId}|${brand}|${date}`;
   const [page, setPage] = useResettingPage(filterKey);
-  const { data, isLoading, isError } = useReconciliation(page, 25, outletId, brand, date);
+  const { data, isLoading, isError } = useReconciliation(page, 12, outletId, brand, date);
   const addClassAItem = useAddClassAItem();
 
   const [newItemName, setNewItemName] = useState('');

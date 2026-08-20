@@ -9,7 +9,7 @@ export function BrandSalesTab({ brand, outletId }: { brand: string; outletId: st
   const { customFrom, customTo } = useFilterStore();
   const filterKey = `${outletId}|${customFrom}|${customTo}`;
   const [page, setPage] = useResettingPage(filterKey);
-  const { data, isLoading, isError } = useSales(page, 10, { outletId, brand });
+  const { data, isLoading, isError } = useSales(page, 12, { outletId, brand });
 
   return (
     <SalesTransactionsTable

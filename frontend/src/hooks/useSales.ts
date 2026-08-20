@@ -3,7 +3,7 @@ import { apiClient } from '@/lib/api-client';
 import { useRangeParams, type RangeParamOverrides } from '@/hooks/useRangeParams';
 import type { ApiEnvelope, ItemSalesRow, PaginationMeta, SaleDetail, SaleRow } from '@/types/api';
 
-export function useSales(page: number, pageSize = 10, overrides?: RangeParamOverrides) {
+export function useSales(page: number, pageSize = 12, overrides?: RangeParamOverrides) {
   const rangeParams = useRangeParams(overrides);
 
   return useQuery({
@@ -28,7 +28,7 @@ export function useSaleDetail(id: string | null) {
   });
 }
 
-export function useItemSales(page: number, pageSize = 25, extra: { search?: string; category?: string; sort?: 'top' | 'least' } = {}) {
+export function useItemSales(page: number, pageSize = 12, extra: { search?: string; category?: string; sort?: 'top' | 'least' } = {}) {
   const rangeParams = useRangeParams();
 
   return useQuery({

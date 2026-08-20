@@ -4,7 +4,7 @@ import { apiClient } from '@/lib/api-client';
 import { useRangeParams, type RangeParamOverrides } from '@/hooks/useRangeParams';
 import type { ApiEnvelope, PaginationMeta, WastageEntry, WastageReason } from '@/types/api';
 
-export function useWastageEntries(page: number, pageSize = 10, overrides?: RangeParamOverrides) {
+export function useWastageEntries(page: number, pageSize = 12, overrides?: RangeParamOverrides) {
   const rangeParams = useRangeParams(overrides);
 
   return useQuery({

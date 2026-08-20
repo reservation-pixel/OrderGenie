@@ -18,7 +18,7 @@ export default function InventoryPage() {
   const [category, setCategory] = useState('all');
   const [lowStockOnly, setLowStockOnly] = useState(false);
 
-  const { data, isLoading, isError } = useInventory(page, 25, {
+  const { data, isLoading, isError } = useInventory(page, 12, {
     store: store !== 'all' ? store : undefined,
     category: category !== 'all' ? category : undefined,
     lowStockOnly,

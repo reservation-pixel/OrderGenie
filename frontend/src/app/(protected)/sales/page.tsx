@@ -16,7 +16,7 @@ export default function SalesPage() {
     setPrevFilterKey(filterKey);
     setPage(1);
   }
-  const { data, isLoading, isError } = useSales(page);
+  const { data, isLoading, isError } = useSales(page, 12);
 
   return (
     <div className="space-y-4">

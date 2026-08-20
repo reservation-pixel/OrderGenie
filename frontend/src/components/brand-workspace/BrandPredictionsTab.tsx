@@ -15,7 +15,7 @@ export function BrandPredictionsTab({ brand, outletId }: { brand: string; outlet
   const to = customTo ?? '';
   const filterKey = `${outletId}|${brand}|${from}|${to}`;
   const [page, setPage] = useResettingPage(filterKey);
-  const { data, isLoading, isError } = usePredictedSales(page, 25, outletId, from, to);
+  const { data, isLoading, isError } = usePredictedSales(page, 12, outletId, from, to);
   const isAllOutlets = outletId === 'all';
 
   return (

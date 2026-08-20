@@ -12,8 +12,10 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Pagination } from '@/components/shared/Pagination';
 import { useUsers, useCreateUser, useUpdateUser, useRoles } from '@/hooks/useSettings';
 import { useOutlets } from '@/hooks/useOutlets';
+import { usePagedList } from '@/hooks/usePagedList';
 import { formatDate } from '@/lib/format';
 import type { UserRow } from '@/types/api';
 
@@ -24,6 +26,7 @@ export default function UsersPage() {
   const updateUser = useUpdateUser();
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<UserRow | null>(null);
+  const { pageItems: usersPage, meta: usersMeta, setPage: setUsersPage } = usePagedList(users);
 
   return (
     <div className="space-y-4">
@@ -44,43 +47,46 @@ export default function UsersPage() {
           ) : isError || !users ? (
             <p className="text-sm text-destructive">Failed to load users.</p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Outlet</TableHead>
-                  <TableHead>Last Login</TableHead>
-                  <TableHead>Active</TableHead>
-                  <TableHead />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {users.map((u) => (
-                  <TableRow key={u.id}>
-                    <TableCell className="font-medium">{u.name}</TableCell>
-                    <TableCell>{u.email}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{u.role}</Badge>
-                    </TableCell>
-                    <TableCell>{u.outletName ?? 'All'}</TableCell>
-                    <TableCell>{u.lastLoginAt ? formatDate(u.lastLoginAt) : 'Never'}</TableCell>
-                    <TableCell>
-                      <Switch
-                        checked={u.isActive}
-                        onCheckedChange={(checked) => updateUser.mutate({ id: u.id, isActive: checked })}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <button className="text-xs font-medium text-primary hover:underline" onClick={() => setEditing(u)}>
-                        Edit
-                      </button>
-                    </TableCell>
+            <>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Role</TableHead>
+                    <TableHead>Outlet</TableHead>
+                    <TableHead>Last Login</TableHead>
+                    <TableHead>Active</TableHead>
+                    <TableHead />
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {usersPage.map((u) => (
+                    <TableRow key={u.id}>
+                      <TableCell className="font-medium">{u.name}</TableCell>
+                      <TableCell>{u.email}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{u.role}</Badge>
+                      </TableCell>
+                      <TableCell>{u.outletName ?? 'All'}</TableCell>
+                      <TableCell>{u.lastLoginAt ? formatDate(u.lastLoginAt) : 'Never'}</TableCell>
+                      <TableCell>
+                        <Switch
+                          checked={u.isActive}
+                          onCheckedChange={(checked) => updateUser.mutate({ id: u.id, isActive: checked })}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <button className="text-xs font-medium text-primary hover:underline" onClick={() => setEditing(u)}>
+                          Edit
+                        </button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              <Pagination meta={usersMeta} onPageChange={setUsersPage} />
+            </>
           )}
         </CardContent>
       </Card>

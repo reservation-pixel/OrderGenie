@@ -21,7 +21,7 @@ export default function ItemSalesPage() {
   const [sort, setSort] = useState<'top' | 'least'>('top');
   const [selectedItem, setSelectedItem] = useState<string | null>(null);
 
-  const { data, isLoading, isError } = useItemSales(page, 25, {
+  const { data, isLoading, isError } = useItemSales(page, 12, {
     search: search || undefined,
     category: category !== 'all' ? category : undefined,
     sort,

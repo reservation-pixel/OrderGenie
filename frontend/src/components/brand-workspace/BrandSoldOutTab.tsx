@@ -38,7 +38,7 @@ export function BrandSoldOutTab({ brand, outletId }: { brand: string; outletId: 
   const date = customTo ?? todayIso();
   const filterKey = `${outletId}|${brand}|${date}`;
   const [page, setPage] = useResettingPage(filterKey);
-  const { data, isLoading, isError } = useSoldOut(page, 25, outletId, date);
+  const { data, isLoading, isError } = useSoldOut(page, 12, outletId, date);
   const upsert = useUpsertSoldOutEntry();
 
   const [newItemName, setNewItemName] = useState('');

@@ -6,7 +6,9 @@ import type { ApiEnvelope, SyncLogRow, SyncType } from '@/types/api';
 export function useSyncLogs() {
   return useQuery({
     queryKey: ['sync-logs'],
-    queryFn: async () => (await apiClient.get<ApiEnvelope<SyncLogRow[]>>('/sync/logs', { params: { limit: 20 } })).data.data,
+    // Fetched once as a flat capped list (no server-side page param on this endpoint) and
+    // paginated client-side — see usePagedList usage in settings/sync/page.tsx.
+    queryFn: async () => (await apiClient.get<ApiEnvelope<SyncLogRow[]>>('/sync/logs', { params: { limit: 100 } })).data.data,
     refetchInterval: 15_000,
   });
 }

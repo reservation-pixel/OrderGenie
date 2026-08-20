@@ -1,19 +1,29 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { TrendingDown, TrendingUp } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
+import { Pagination } from '@/components/shared/Pagination';
 import { useOutletsOverview, useOutletComparison } from '@/hooks/useOutletsOverview';
+import { usePagedList } from '@/hooks/usePagedList';
 import { formatCurrency, formatNumber } from '@/lib/format';
 
 export default function OutletsPage() {
   const [tab, setTab] = useState('list');
   const { data: overview, isLoading: loadingOverview, isError: overviewError } = useOutletsOverview();
   const { data: comparison, isLoading: loadingComparison, isError: comparisonError } = useOutletComparison();
+
+  const { pageItems: overviewPage, meta: overviewMeta, setPage: setOverviewPage } = usePagedList(overview);
+
+  const sortedComparison = useMemo(
+    () => (comparison ? [...comparison].sort((a, b) => b.revenue - a.revenue) : undefined),
+    [comparison]
+  );
+  const { pageItems: comparisonPage, meta: comparisonMeta, setPage: setComparisonPage } = usePagedList(sortedComparison);
 
   return (
     <div className="space-y-4">
@@ -56,7 +66,7 @@ export default function OutletsPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {overview.map((o) => (
+                      {overviewPage.map((o) => (
                         <TableRow key={o.id}>
                           <TableCell className="font-medium">
                             {o.name}
@@ -74,6 +84,7 @@ export default function OutletsPage() {
                       ))}
                     </TableBody>
                   </Table>
+                  <Pagination meta={overviewMeta} onPageChange={setOverviewPage} />
                 </div>
               )}
             </CardContent>
@@ -109,33 +120,32 @@ export default function OutletsPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {[...comparison]
-                        .sort((a, b) => b.revenue - a.revenue)
-                        .map((o) => (
-                          <TableRow key={o.id}>
-                            <TableCell className="font-medium">{o.name}</TableCell>
-                            <TableCell>{o.brand}</TableCell>
-                            <TableCell className="text-right">{formatCurrency(o.revenue)}</TableCell>
-                            <TableCell className="text-right">{formatNumber(o.orders)}</TableCell>
-                            <TableCell className="text-right">{formatCurrency(o.averageBill)}</TableCell>
-                            <TableCell className="text-right">
-                              {o.growthPercent === null ? (
-                                '—'
-                              ) : (
-                                <span
-                                  className={`inline-flex items-center gap-1 ${
-                                    o.growthPercent >= 0 ? 'text-emerald-600' : 'text-red-600'
-                                  }`}
-                                >
-                                  {o.growthPercent >= 0 ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />}
-                                  {Math.abs(o.growthPercent).toFixed(1)}%
-                                </span>
-                              )}
-                            </TableCell>
-                          </TableRow>
-                        ))}
+                      {comparisonPage.map((o) => (
+                        <TableRow key={o.id}>
+                          <TableCell className="font-medium">{o.name}</TableCell>
+                          <TableCell>{o.brand}</TableCell>
+                          <TableCell className="text-right">{formatCurrency(o.revenue)}</TableCell>
+                          <TableCell className="text-right">{formatNumber(o.orders)}</TableCell>
+                          <TableCell className="text-right">{formatCurrency(o.averageBill)}</TableCell>
+                          <TableCell className="text-right">
+                            {o.growthPercent === null ? (
+                              '—'
+                            ) : (
+                              <span
+                                className={`inline-flex items-center gap-1 ${
+                                  o.growthPercent >= 0 ? 'text-emerald-600' : 'text-red-600'
+                                }`}
+                              >
+                                {o.growthPercent >= 0 ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />}
+                                {Math.abs(o.growthPercent).toFixed(1)}%
+                              </span>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
                     </TableBody>
                   </Table>
+                  <Pagination meta={comparisonMeta} onPageChange={setComparisonPage} />
                 </div>
               )}
             </CardContent>

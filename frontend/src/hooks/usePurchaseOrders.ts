@@ -10,7 +10,7 @@ export interface UsePurchaseOrdersOptions {
   search?: string;
 }
 
-export function usePurchaseOrders(page: number, pageSize = 25, options?: UsePurchaseOrdersOptions) {
+export function usePurchaseOrders(page: number, pageSize = 12, options?: UsePurchaseOrdersOptions) {
   const { status, overrides, dateField, search } = options ?? {};
   const rangeParams = useRangeParams(overrides);
 

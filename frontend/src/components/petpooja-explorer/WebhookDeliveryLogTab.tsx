@@ -34,7 +34,7 @@ export function WebhookDeliveryLogTab() {
   const [page, setPage] = useResettingPage(`${outcome}|${status}|${outletId}|${customFrom}|${customTo}|${search}`);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  const { data, isLoading, isError } = usePurchaseOrderWebhookLogs(page, 25, {
+  const { data, isLoading, isError } = usePurchaseOrderWebhookLogs(page, 12, {
     outcome,
     status,
     search: search || undefined,

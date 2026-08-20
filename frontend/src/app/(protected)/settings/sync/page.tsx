@@ -9,8 +9,10 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Pagination } from '@/components/shared/Pagination';
 import { useSyncSchedules, useUpdateSyncSchedule } from '@/hooks/useSettings';
 import { useSyncLogs, useTriggerManualSync } from '@/hooks/useSync';
+import { usePagedList } from '@/hooks/usePagedList';
 import { formatDate, formatTime } from '@/lib/format';
 import type { SyncLogRow } from '@/types/api';
 
@@ -27,6 +29,7 @@ export default function SyncSchedulePage() {
   const triggerSync = useTriggerManualSync();
   const { data: logs } = useSyncLogs();
   const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const { pageItems: logsPage, meta: logsMeta, setPage: setLogsPage } = usePagedList(logs);
 
   if (isLoading) {
     return <Skeleton className="h-64 w-full" />;
@@ -117,7 +120,7 @@ export default function SyncSchedulePage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {(logs ?? []).map((l) => (
+              {logsPage.map((l) => (
                 <TableRow key={l.id}>
                   <TableCell className="font-medium">{l.syncType}</TableCell>
                   <TableCell>{l.triggerType}</TableCell>
@@ -135,6 +138,7 @@ export default function SyncSchedulePage() {
               ))}
             </TableBody>
           </Table>
+          <Pagination meta={logsMeta} onPageChange={setLogsPage} />
         </CardContent>
       </Card>
     </div>

@@ -14,7 +14,7 @@ export function BrandInventoryTab({ brand, outletId }: { brand: string; outletId
   const { customFrom, customTo } = useFilterStore();
   const filterKey = `${outletId}|${customFrom}|${customTo}`;
   const [page, setPage] = useResettingPage(filterKey);
-  const { data, isLoading, isError } = useInventory(page, 25, {}, { outletId, brand });
+  const { data, isLoading, isError } = useInventory(page, 12, {}, { outletId, brand });
 
   return (
     <Card>

@@ -25,7 +25,7 @@ export default function PurchaseOrdersPage() {
   const [page, setPage] = useResettingPage(`${status}|${customFrom}|${customTo}|${search}`);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  const { data, isLoading, isError } = usePurchaseOrders(page, 25, { status, search: search || undefined });
+  const { data, isLoading, isError } = usePurchaseOrders(page, 12, { status, search: search || undefined });
 
   return (
     <div className="space-y-4">

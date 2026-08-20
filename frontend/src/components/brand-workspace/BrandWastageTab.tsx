@@ -36,7 +36,7 @@ export function BrandWastageTab({ brand, outletId }: { brand: string; outletId: 
   const isViewer = useAuthStore((s) => s.user)?.role === 'VIEWER';
   const filterKey = `${outletId}|${customFrom}|${customTo}`;
   const [page, setPage] = useResettingPage(filterKey);
-  const { data, isLoading, isError } = useWastageEntries(page, 10, { outletId, brand });
+  const { data, isLoading, isError } = useWastageEntries(page, 12, { outletId, brand });
   const createEntry = useCreateWastageEntry();
   const deleteEntry = useDeleteWastageEntry();
 

@@ -39,6 +39,10 @@ export function SalesApiTab({ brand }: { brand: string }) {
   const [prevBrandOutletsKey, setPrevBrandOutletsKey] = useState(brandOutlets.map((o) => o.id).join(','));
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [result, setResult] = useState<ExplorerResult | null>(null);
+  // Bumped on each successful fetch and used as ExplorerResults' `key`, so a fresh
+  // result remounts the component and its pagination resets to page 1 instead of
+  // clamping to whatever page the previous (possibly longer) result left it on.
+  const [fetchSeq, setFetchSeq] = useState(0);
 
   const brandOutletsKey = brandOutlets.map((o) => o.id).join(',');
   if (brandOutletsKey !== prevBrandOutletsKey) {
@@ -56,7 +60,7 @@ export function SalesApiTab({ brand }: { brand: string }) {
     setExpanded(new Set());
     explorer.mutate(
       { apiType: 'orders', outletIds: selectedOutletIds, fromDate, toDate },
-      { onSuccess: (data) => setResult(data) }
+      { onSuccess: (data) => { setResult(data); setFetchSeq((n) => n + 1); } }
     );
   }
 
@@ -134,7 +138,7 @@ export function SalesApiTab({ brand }: { brand: string }) {
       </Button>
 
       {result && (
-        <ExplorerResults result={result} expanded={expanded} setExpanded={setExpanded} onExportCsv={exportCsv} onExportJson={exportJson} />
+        <ExplorerResults key={fetchSeq} result={result} expanded={expanded} setExpanded={setExpanded} onExportCsv={exportCsv} onExportJson={exportJson} />
       )}
     </div>
   );

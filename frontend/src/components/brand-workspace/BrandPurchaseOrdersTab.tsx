@@ -20,7 +20,7 @@ export function BrandPurchaseOrdersTab({ brand, outletId }: { brand: string; out
   const filterKey = `${outletId}|${customFrom}|${customTo}|${search}`;
   const [page, setPage] = useResettingPage(filterKey);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const { data, isLoading, isError } = usePurchaseOrders(page, 25, { overrides: { outletId, brand }, search: search || undefined });
+  const { data, isLoading, isError } = usePurchaseOrders(page, 12, { overrides: { outletId, brand }, search: search || undefined });
 
   return (
     <Card>

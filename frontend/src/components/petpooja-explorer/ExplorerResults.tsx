@@ -5,6 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Pagination } from '@/components/shared/Pagination';
+import { usePagedList } from '@/hooks/usePagedList';
 import { formatCurrency, formatNumber } from '@/lib/format';
 import type { ExplorerOrderRecord, ExplorerPurchaseRecord, ExplorerResult, ExplorerTransferRecord } from '@/types/api';
 
@@ -27,6 +29,18 @@ export function ExplorerResults({
     else next.add(i);
     setExpanded(next);
   }
+
+  // A live Petpooja pull can return records across a whole date range x every outlet —
+  // this can be a lot of rows, so it's paginated client-side same as the other spots
+  // with no backend page support. `start` lets row index (used for expand-state + CSV/JSON
+  // export ordering) stay tied to the record's position in the FULL result.records array,
+  // not its position within the current page slice.
+  // `records` is widened to the common union — result.records' actual type (a union OF
+  // array types, not an array of the union) doesn't infer cleanly against usePagedList<T>.
+  const records: (ExplorerOrderRecord | ExplorerPurchaseRecord | ExplorerTransferRecord)[] = result.records;
+  const { meta, setPage } = usePagedList(records, 12);
+  const start = (meta.page - 1) * meta.pageSize;
+  const pageRecords = records.slice(start, start + meta.pageSize);
 
   return (
     <div className="space-y-4">
@@ -82,9 +96,10 @@ export function ExplorerResults({
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {(result.records as ExplorerOrderRecord[]).map((r, i) => (
-                        <OrderRows key={i} row={r} index={i} expanded={expanded.has(i)} onToggle={() => toggleRow(i)} />
-                      ))}
+                      {(pageRecords as ExplorerOrderRecord[]).map((r, localI) => {
+                        const i = start + localI;
+                        return <OrderRows key={i} row={r} index={i} expanded={expanded.has(i)} onToggle={() => toggleRow(i)} />;
+                      })}
                     </TableBody>
                   </>
                 )}
@@ -106,9 +121,10 @@ export function ExplorerResults({
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {(result.records as ExplorerPurchaseRecord[]).map((r, i) => (
-                        <PurchaseRows key={i} row={r} index={i} expanded={expanded.has(i)} onToggle={() => toggleRow(i)} />
-                      ))}
+                      {(pageRecords as ExplorerPurchaseRecord[]).map((r, localI) => {
+                        const i = start + localI;
+                        return <PurchaseRows key={i} row={r} index={i} expanded={expanded.has(i)} onToggle={() => toggleRow(i)} />;
+                      })}
                     </TableBody>
                   </>
                 )}
@@ -121,8 +137,8 @@ export function ExplorerResults({
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {(result.records as ExplorerTransferRecord[]).map((r, i) => (
-                        <TableRow key={i}>
+                      {(pageRecords as ExplorerTransferRecord[]).map((r, localI) => (
+                        <TableRow key={start + localI}>
                           <TableCell>{r.outletName}</TableCell>
                           <TableCell className="font-mono text-xs">{JSON.stringify(r.raw)}</TableCell>
                         </TableRow>
@@ -131,6 +147,7 @@ export function ExplorerResults({
                   </>
                 )}
               </Table>
+              <Pagination meta={meta} onPageChange={setPage} />
             </div>
           )}
         </CardContent>

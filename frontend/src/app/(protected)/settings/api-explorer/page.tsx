@@ -70,6 +70,10 @@ export default function ApiExplorerPage() {
   // tab change) to the CURRENT key, not null, so the button starts clean/outline
   // instead of appearing dirty before anything has actually changed.
   const [lastFetchedKey, setLastFetchedKey] = useState(() => buildFetchKey('orders', todayIso(), todayIso(), []));
+  // Bumped on each successful fetch and used as ExplorerResults' `key`, so a fresh
+  // result remounts the component and its pagination resets to page 1 instead of
+  // clamping to whatever page the previous (possibly longer) result left it on.
+  const [fetchSeq, setFetchSeq] = useState(0);
 
   const { data: outlets } = useOutlets();
   const explorer = usePetpoojaExplorer();
@@ -98,7 +102,7 @@ export default function ApiExplorerPage() {
     setLastFetchedKey(fetchKey);
     explorer.mutate(
       { apiType, outletIds: selectedOutletIds, fromDate, toDate },
-      { onSuccess: (data) => setResult(data) }
+      { onSuccess: (data) => { setResult(data); setFetchSeq((n) => n + 1); } }
     );
   }
 
@@ -212,7 +216,7 @@ export default function ApiExplorerPage() {
                 </Card>
 
                 {result && result.apiType === t && (
-                  <ExplorerResults result={result} expanded={expanded} setExpanded={setExpanded} onExportCsv={exportCsv} onExportJson={exportJson} />
+                  <ExplorerResults key={fetchSeq} result={result} expanded={expanded} setExpanded={setExpanded} onExportCsv={exportCsv} onExportJson={exportJson} />
                 )}
               </>
             )}

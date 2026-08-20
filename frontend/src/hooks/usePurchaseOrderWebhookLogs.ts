@@ -10,7 +10,7 @@ export interface UsePurchaseOrderWebhookLogsOptions {
   search?: string;
 }
 
-export function usePurchaseOrderWebhookLogs(page: number, pageSize = 25, options?: UsePurchaseOrderWebhookLogsOptions) {
+export function usePurchaseOrderWebhookLogs(page: number, pageSize = 12, options?: UsePurchaseOrderWebhookLogsOptions) {
   const { outcome, status, overrides, search } = options ?? {};
   const rangeParams = useRangeParams(overrides);
 
