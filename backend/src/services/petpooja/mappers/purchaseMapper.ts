@@ -109,29 +109,3 @@ export function mapPetpoojaPurchase(record: PetpoojaPurchaseRecord): MappedPurch
     items,
   };
 }
-
-export interface MappedTransfer {
-  transferNumber: string;
-  transferDate: Date;
-  senderName: string | null;
-  receiverName: string | null;
-  items: Array<{ itemName: string; quantity: number; unit: string | null }>;
-  rawPayload: PetpoojaPurchaseRecord;
-}
-
-export function mapPetpoojaTransferFromPurchase(record: PetpoojaPurchaseRecord): MappedTransfer {
-  const items = (record.item_details ?? []).map((i) => ({
-    itemName: i.itemname ?? 'Unknown Item',
-    quantity: num(i.qty),
-    unit: i.lbl_unit ?? null,
-  }));
-
-  return {
-    transferNumber: record.purchase_id,
-    transferDate: parsePetpoojaDate(record.invoice_date ?? record.created_on),
-    senderName: record.restaurant_details?.sender?.sender_name?.trim() || null,
-    receiverName: record.restaurant_details?.receiver?.receiver_name?.trim() || null,
-    items,
-    rawPayload: record,
-  };
-}

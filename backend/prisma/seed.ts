@@ -144,7 +144,6 @@ async function seedPetpoojaConfig() {
 async function seedSyncSchedules() {
   const schedules: Array<{ syncType: SyncType; cron: string }> = [
     { syncType: SyncType.SALES, cron: DEFAULT_CRON_EXPRESSIONS.SALES },
-    { syncType: SyncType.INVENTORY, cron: DEFAULT_CRON_EXPRESSIONS.INVENTORY },
     { syncType: SyncType.PURCHASE, cron: DEFAULT_CRON_EXPRESSIONS.PURCHASE },
     { syncType: SyncType.HISTORICAL, cron: DEFAULT_CRON_EXPRESSIONS.HISTORICAL },
   ];

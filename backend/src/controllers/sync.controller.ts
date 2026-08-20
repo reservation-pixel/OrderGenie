@@ -7,9 +7,8 @@ import { AppError } from '../utils/apiResponse';
 import { prisma } from '../config/db';
 import { runSalesSync } from '../services/sync/salesSync.service';
 import { runPurchaseSync } from '../services/sync/purchaseSync.service';
-import { runInventorySync } from '../services/sync/inventorySync.service';
 import { runTransferSync } from '../services/sync/transferSync.service';
-import { runHistoricalSync } from '../services/sync/historicalSync.service';
+import { runDataRetentionCleanup } from '../services/sync/historicalSync.service';
 
 const manualSyncSchema = z.object({
   syncType: z.nativeEnum(SyncType),
@@ -30,15 +29,13 @@ export const triggerManualSyncHandler = asyncHandler(async (req: Request, res: R
       from.setDate(from.getDate() - 6);
       return ok(res, await runPurchaseSync(TriggerType.MANUAL, from, yesterday, userId, outletIds));
     }
-    case SyncType.INVENTORY:
-      return ok(res, await runInventorySync(TriggerType.MANUAL, userId, outletIds));
     case SyncType.TRANSFER: {
       const from = new Date(yesterday);
       from.setDate(from.getDate() - 6);
       return ok(res, await runTransferSync(TriggerType.MANUAL, from, yesterday, userId, outletIds));
     }
     case SyncType.HISTORICAL:
-      return ok(res, await runHistoricalSync(TriggerType.MANUAL, userId));
+      return ok(res, await runDataRetentionCleanup(TriggerType.MANUAL, userId));
     default:
       throw new AppError('Unsupported sync type', 400);
   }

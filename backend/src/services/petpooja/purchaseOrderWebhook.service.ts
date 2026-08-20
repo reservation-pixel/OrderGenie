@@ -2,8 +2,7 @@ import { ApiType, PurchaseOrderStatus } from '@prisma/client';
 import { prisma } from '../../config/db';
 import { AppError } from '../../utils/apiResponse';
 import { resolveCredentials } from './credentials';
-import { isTransferWebhookRecord, mapPurchaseOrderWebhook, mapTransferFromWebhook } from './mappers/purchaseOrderWebhookMapper';
-import { recordTransfer } from '../sync/purchaseSync.service';
+import { isTransferWebhookRecord, mapPurchaseOrderWebhook } from './mappers/purchaseOrderWebhookMapper';
 import type { PetpoojaPurchaseOrderWebhookPayload } from './types';
 
 /**
@@ -69,13 +68,10 @@ export async function handlePurchaseOrderWebhook(
     throw new AppError(`No outlet configured with sync code "${menuSharingCode ?? ''}"`, 422);
   }
 
-  // Internal outlet-to-outlet transfers ("Kitchen" receiverType) also get recorded as
-  // an InventoryTransaction, same as the pull sync does — and the same dedup-safe
-  // recordTransfer() is reused here, so a redelivered webhook can't duplicate it.
+  // Internal outlet-to-outlet transfers ("Kitchen" receiverType) are still labeled below
+  // (Purchase data), but no longer written to InventoryTransaction — stock-level/transfer
+  // tracking was dropped, Sales + Purchase only.
   const isTransfer = isTransferWebhookRecord(payload.data);
-  if (isTransfer) {
-    await recordTransfer(outlet, mapTransferFromWebhook(payload.data));
-  }
 
   const mapped = mapPurchaseOrderWebhook(payload.data);
   const vendorName = isTransfer ? `${mapped.vendorName ?? 'Internal'} (Internal Transfer)` : mapped.vendorName;

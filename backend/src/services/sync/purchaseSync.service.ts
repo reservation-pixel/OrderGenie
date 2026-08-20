@@ -1,15 +1,9 @@
 import type { Outlet } from '@prisma/client';
-import { ApiType, DataSource, InventoryTransactionType, TriggerType } from '@prisma/client';
+import { ApiType, TriggerType } from '@prisma/client';
 import { prisma } from '../../config/db';
 import { resolveCredentials } from '../petpooja/credentials';
 import { fetchPurchases } from '../petpooja/purchaseApi.service';
-import {
-  isTransferRecord,
-  mapPetpoojaPurchase,
-  mapPetpoojaTransferFromPurchase,
-  type MappedPurchase,
-  type MappedTransfer,
-} from '../petpooja/mappers/purchaseMapper';
+import { isTransferRecord, mapPetpoojaPurchase, type MappedPurchase } from '../petpooja/mappers/purchaseMapper';
 import { runSync, type SyncOutletResult, type SyncRunSummary } from './syncRunner.service';
 
 async function resolveVendorId(name: string | null, petpoojaId: string | null, phone: string | null): Promise<string | undefined> {
@@ -83,57 +77,6 @@ async function upsertPurchaseOrder(outletId: string, purchase: MappedPurchase): 
 }
 
 /**
- * Transfer legs only carry sender/receiver NAMES (no RID), so we match them against
- * the outlet currently being synced. If neither side matches confidently, the leg is
- * still recorded (as ADJUSTMENT) with the raw payload preserved rather than dropped —
- * this can happen for outlets not yet in our known outlet list (Petpooja's live data
- * already showed at least one, "Ahmedabad store 2.0", that isn't in our seed).
- */
-export async function recordTransfer(outlet: Outlet, transfer: MappedTransfer): Promise<void> {
-  const isSender = transfer.senderName?.toLowerCase() === outlet.name.toLowerCase();
-  const isReceiver = transfer.receiverName?.toLowerCase() === outlet.name.toLowerCase();
-  const transactionType = isSender
-    ? InventoryTransactionType.TRANSFER_OUT
-    : isReceiver
-      ? InventoryTransactionType.TRANSFER_IN
-      : InventoryTransactionType.ADJUSTMENT;
-
-  for (const item of transfer.items) {
-    // The Purchase sync re-fetches a rolling trailing window every run (every 15 min on
-    // cron), so the same transfer reappears in `records` on every cycle until it ages out
-    // of that window — without this check, each cycle created a brand new duplicate row
-    // for the same real transfer (confirmed live: one table reached 300MB+ in about a day
-    // from this alone). Natural key: outlet + transfer number + item + direction.
-    const existing = await prisma.inventoryTransaction.findFirst({
-      where: {
-        outletId: outlet.id,
-        referenceType: 'TRANSFER',
-        referenceId: transfer.transferNumber,
-        itemName: item.itemName,
-        transactionType,
-      },
-      select: { id: true },
-    });
-    if (existing) continue;
-
-    await prisma.inventoryTransaction.create({
-      data: {
-        outletId: outlet.id,
-        itemName: item.itemName,
-        transactionType,
-        quantity: item.quantity,
-        unit: item.unit,
-        referenceType: 'TRANSFER',
-        referenceId: transfer.transferNumber,
-        transactionDate: transfer.transferDate,
-        rawPayload: transfer.rawPayload as object,
-        source: DataSource.PETPOOJA,
-      },
-    });
-  }
-}
-
-/**
  * Billing outlets (Capiche/Aiko/Bookends — only a salesSyncCode, no inventorySyncCode)
  * don't have a separate Purchase/Inventory API integration with Petpooja; their purchase
  * records come back through the SAME get_purchase/ endpoint but authenticated with the
@@ -156,16 +99,12 @@ async function syncOutletPurchases(outlet: Outlet, fromDate: Date, toDate: Date)
 
   for (const record of records) {
     try {
+      // Internal stock movements (e.g. Prep Kitchen -> outlet) have no external vendor,
+      // but still represent real stock/value received into this outlet — surface them on
+      // the Purchase Orders page, clearly labeled as internal rather than a real vendor
+      // purchase, since "0 purchase orders" read as broken when this data exists. No
+      // longer written to InventoryTransaction — stock-level tracking was dropped.
       const isTransfer = isTransferRecord(record);
-      if (isTransfer) {
-        // Internal stock movements (e.g. Prep Kitchen -> outlet) have no external vendor,
-        // but still represent real stock/value received into this outlet — so in addition
-        // to the InventoryTransaction below (used for stock-level tracking), also surface
-        // them on the Purchase Orders page, clearly labeled as internal rather than a real
-        // vendor purchase, since "0 purchase orders" read as broken when this data exists.
-        await recordTransfer(outlet, mapPetpoojaTransferFromPurchase(record));
-      }
-
       const mapped = mapPetpoojaPurchase(record);
       const result = await upsertPurchaseOrder(outlet.id, {
         ...mapped,
