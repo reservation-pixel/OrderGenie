@@ -16,10 +16,13 @@ export function useTriggerManualSync() {
   return useMutation({
     mutationFn: async (syncType: SyncType) => apiClient.post('/sync/manual', { syncType }),
     onSuccess: (_data, syncType) => {
-      toast.success(`${syncType} sync completed`);
+      // The trigger now runs in the background (see sync.controller.ts) — this response
+      // just confirms it started, not that it finished. Progress/results show up in the
+      // Recent Sync Runs table via useSyncLogs' 15s poll.
+      toast.success(`${syncType} sync started — check Recent Sync Runs for progress`);
       qc.invalidateQueries({ queryKey: ['sync-logs'] });
       qc.invalidateQueries({ queryKey: ['settings', 'sync-schedule'] });
     },
-    onError: (_err, syncType) => toast.error(`${syncType} sync failed`),
+    onError: (_err, syncType) => toast.error(`${syncType} sync failed to start`),
   });
 }

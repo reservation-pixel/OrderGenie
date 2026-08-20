@@ -5,6 +5,7 @@ import { asyncHandler } from '../utils/asyncHandler';
 import { ok } from '../utils/apiResponse';
 import { AppError } from '../utils/apiResponse';
 import { prisma } from '../config/db';
+import { logger } from '../utils/logger';
 import { runSalesSync } from '../services/sync/salesSync.service';
 import { runPurchaseSync } from '../services/sync/purchaseSync.service';
 import { runTransferSync } from '../services/sync/transferSync.service';
@@ -15,30 +16,55 @@ const manualSyncSchema = z.object({
   outletIds: z.array(z.string()).optional(),
 });
 
+/**
+ * Runs the sync in the background rather than being awaited by the request handler.
+ * A manual trigger across several outlets can take minutes (each outlet is synced
+ * sequentially, and Petpooja API calls alone can take 60-90s) — long enough to blow
+ * past the frontend/proxy request timeout even though the sync itself succeeds, which
+ * showed up as a false "sync failed" toast. Progress/results are visible via the
+ * existing SyncLog rows (Settings > Sync Schedule polls these every 15s), same as cron
+ * runs already work.
+ */
+function runInBackground(promise: Promise<unknown>, syncType: SyncType) {
+  promise.catch((err) => {
+    logger.error(`[sync] manual ${syncType} trigger failed`, { err: err instanceof Error ? err.message : String(err) });
+  });
+}
+
 export const triggerManualSyncHandler = asyncHandler(async (req: Request, res: Response) => {
   const { syncType, outletIds } = manualSyncSchema.parse(req.body);
   const userId = req.user!.id;
-  const yesterday = new Date();
+  const today = new Date();
+  const yesterday = new Date(today);
   yesterday.setDate(yesterday.getDate() - 1);
 
   switch (syncType) {
     case SyncType.SALES:
-      return ok(res, await runSalesSync(TriggerType.MANUAL, yesterday, userId, outletIds));
+      runInBackground(
+        runSalesSync(TriggerType.MANUAL, yesterday, userId, outletIds).then(() => runSalesSync(TriggerType.MANUAL, today, userId, outletIds)),
+        syncType
+      );
+      break;
     case SyncType.PURCHASE: {
       const from = new Date(yesterday);
       from.setDate(from.getDate() - 6);
-      return ok(res, await runPurchaseSync(TriggerType.MANUAL, from, yesterday, userId, outletIds));
+      runInBackground(runPurchaseSync(TriggerType.MANUAL, from, today, userId, outletIds), syncType);
+      break;
     }
     case SyncType.TRANSFER: {
       const from = new Date(yesterday);
       from.setDate(from.getDate() - 6);
-      return ok(res, await runTransferSync(TriggerType.MANUAL, from, yesterday, userId, outletIds));
+      runInBackground(runTransferSync(TriggerType.MANUAL, from, yesterday, userId, outletIds), syncType);
+      break;
     }
     case SyncType.HISTORICAL:
-      return ok(res, await runDataRetentionCleanup(TriggerType.MANUAL, userId));
+      runInBackground(runDataRetentionCleanup(TriggerType.MANUAL, userId), syncType);
+      break;
     default:
       throw new AppError('Unsupported sync type', 400);
   }
+
+  return ok(res, { started: true, syncType });
 });
 
 export const listSyncLogsHandler = asyncHandler(async (req: Request, res: Response) => {
