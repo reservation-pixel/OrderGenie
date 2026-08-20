@@ -28,7 +28,7 @@ export function ReceivedPurchaseOrdersTab() {
   const { outletId, customFrom, customTo, setOutletId } = useFilterStore();
   const { data: outlets } = useOutlets();
   const [status, setStatus] = useState('PENDING');
-  const [dateField, setDateField] = useState<'orderDate' | 'createdAt'>('orderDate');
+  const [dateField, setDateField] = useState<'orderDate' | 'petpoojaCreatedAt'>('orderDate');
   const [search, setSearch] = useState('');
   const [page, setPage] = useResettingPage(`${status}|${outletId}|${customFrom}|${customTo}|${dateField}|${search}`);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -57,13 +57,16 @@ export function ReceivedPurchaseOrdersTab() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="flex flex-wrap items-end gap-3">
           <DateRangeFilter />
-          <Select value={dateField} onValueChange={(v) => setDateField(v === 'createdAt' ? 'createdAt' : 'orderDate')}>
+          <Select
+            value={dateField}
+            onValueChange={(v) => setDateField(v === 'petpoojaCreatedAt' ? 'petpoojaCreatedAt' : 'orderDate')}
+          >
             <SelectTrigger className="w-[160px]">
               <SelectValue placeholder="Date filter" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="orderDate">Order Date</SelectItem>
-              <SelectItem value="createdAt">Created On</SelectItem>
+              <SelectItem value="petpoojaCreatedAt">Created On</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -146,7 +149,7 @@ export function ReceivedPurchaseOrdersTab() {
                         </TableCell>
                         <TableCell className="text-right">{formatCurrency(po.totalAmount)}</TableCell>
                         <TableCell>{formatDate(po.orderDate)}</TableCell>
-                        <TableCell>{formatDate(po.createdAt)}</TableCell>
+                        <TableCell>{po.petpoojaCreatedAt ? formatDate(po.petpoojaCreatedAt) : '—'}</TableCell>
                         <TableCell>{po.expectedDate ? formatDate(po.expectedDate) : '—'}</TableCell>
                       </TableRow>
                     ))}

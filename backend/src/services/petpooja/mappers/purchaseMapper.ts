@@ -11,6 +11,14 @@ function parsePetpoojaDate(value: string | undefined): Date {
   return new Date(value.includes('T') ? value : `${value}T00:00:00Z`);
 }
 
+// Unlike invoice_date (date-only, "YYYY-MM-DD"), Petpooja's created_on is a full
+// "YYYY-MM-DD HH:mm:ss" datetime — appending "T00:00:00Z" to it (as parsePetpoojaDate
+// does) produces an unparseable string. Same format/fix as salesMapper.ts's
+// parsePetpoojaDateTime for order.created_on.
+function parsePetpoojaDateTime(value: string): Date {
+  return new Date(value.includes('T') ? value : value.replace(' ', 'T'));
+}
+
 /**
  * Confirmed live: Petpooja's get_purchase records cover both real vendor purchases
  * and internal inter-outlet transfers. `is_transfer_only === '1'` (paired with
@@ -76,6 +84,7 @@ export interface MappedPurchase {
   petpoojaPurchaseId: string;
   invoiceNumber: string | null;
   orderDate: Date;
+  petpoojaCreatedAt?: Date;
   vendorName: string | null;
   vendorPetpoojaId: string | null;
   vendorPhone: string | null;
@@ -99,7 +108,16 @@ export function mapPetpoojaPurchase(record: PetpoojaPurchaseRecord): MappedPurch
     poNumber: reference?.trim() || `PO-${record.purchase_id}`,
     petpoojaPurchaseId: record.purchase_id,
     invoiceNumber: record.invoice_number || null,
-    orderDate: parsePetpoojaDate(record.invoice_date ?? record.created_on),
+    orderDate: record.invoice_date
+      ? parsePetpoojaDate(record.invoice_date)
+      : record.created_on
+        ? parsePetpoojaDateTime(record.created_on)
+        : new Date(),
+    // Distinct from orderDate: record.created_on is Petpooja's own record-creation
+    // timestamp, not the vendor invoice date. Left undefined (not defaulted to "now")
+    // when Petpooja doesn't send it, so this column never silently becomes a local
+    // OrderGenie timestamp in disguise.
+    petpoojaCreatedAt: record.created_on ? parsePetpoojaDateTime(record.created_on) : undefined,
     vendorName: receiver?.receiver_name?.trim() || null,
     vendorPetpoojaId: record.receiver_id ?? null,
     vendorPhone: receiver?.receiver_contact || null,

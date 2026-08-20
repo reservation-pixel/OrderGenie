@@ -43,6 +43,7 @@ async function upsertPurchaseOrder(outletId: string, purchase: MappedPurchase): 
     totalAmount: purchase.totalAmount,
     taxAmount: purchase.taxAmount,
     orderDate: purchase.orderDate,
+    petpoojaCreatedAt: purchase.petpoojaCreatedAt ?? null,
     rawPayload: purchase.rawPayload as object,
   };
 

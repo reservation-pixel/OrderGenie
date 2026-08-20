@@ -210,7 +210,7 @@ export interface PurchaseOrderRow {
   totalAmount: number;
   orderDate: string;
   expectedDate: string | null;
-  createdAt: string;
+  petpoojaCreatedAt: string | null;
 }
 
 export interface PurchaseOrderDetail extends PurchaseOrderRow {

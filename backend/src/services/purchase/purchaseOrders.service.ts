@@ -25,7 +25,7 @@ export interface PurchaseOrderQuery {
 export async function listPurchaseOrders(query: PurchaseOrderQuery) {
   const pagination = parsePagination(query as unknown as Record<string, unknown>);
   const { from, to } = resolveDateRange(query);
-  const dateField = query.dateField === 'createdAt' ? 'createdAt' : 'orderDate';
+  const dateField = query.dateField === 'petpoojaCreatedAt' ? 'petpoojaCreatedAt' : 'orderDate';
 
   const where: Prisma.PurchaseOrderWhereInput = {
     ...(query.outletId ? { outletId: query.outletId } : {}),
@@ -57,7 +57,7 @@ export async function listPurchaseOrders(query: PurchaseOrderQuery) {
       totalAmount: toNum(po.totalAmount),
       orderDate: po.orderDate,
       expectedDate: po.expectedDate,
-      createdAt: po.createdAt,
+      petpoojaCreatedAt: po.petpoojaCreatedAt,
     })),
     meta: paginationMeta(pagination, total),
   };

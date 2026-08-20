@@ -6,7 +6,7 @@ import type { ApiEnvelope, PaginationMeta, PurchaseOrderDetail, PurchaseOrderRow
 export interface UsePurchaseOrdersOptions {
   status?: string;
   overrides?: RangeParamOverrides;
-  dateField?: 'orderDate' | 'createdAt';
+  dateField?: 'orderDate' | 'petpoojaCreatedAt';
   search?: string;
 }
 
