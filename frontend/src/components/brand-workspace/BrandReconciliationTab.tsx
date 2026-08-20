@@ -77,6 +77,7 @@ export function BrandReconciliationTab({ brand, outletId }: { brand: string; out
   const { customTo } = useFilterStore();
   const { user } = useAuthStore();
   const isHeadChef = user?.role === 'HEAD_CHEF';
+  const isViewer = user?.role === 'VIEWER';
   const date = customTo ?? todayIso();
   const filterKey = `${outletId}|${brand}|${date}`;
   const [page, setPage] = useResettingPage(filterKey);
@@ -162,7 +163,8 @@ export function BrandReconciliationTab({ brand, outletId }: { brand: string; out
                         outletId={outletId}
                         brand={brand}
                         date={date}
-                        canManageSelection={!isHeadChef}
+                        canManageSelection={!isHeadChef && !isViewer}
+                        canEdit={!isViewer}
                       />
                     ))}
                   </TableBody>
@@ -178,7 +180,8 @@ export function BrandReconciliationTab({ brand, outletId }: { brand: string; out
                     outletId={outletId}
                     brand={brand}
                     date={date}
-                    canManageSelection={!isHeadChef}
+                    canManageSelection={!isHeadChef && !isViewer}
+                    canEdit={!isViewer}
                   />
                 ))}
               </div>
@@ -187,7 +190,7 @@ export function BrandReconciliationTab({ brand, outletId }: { brand: string; out
             </>
           )}
 
-          {!isAllOutlets && !isHeadChef && (
+          {!isAllOutlets && !isHeadChef && !isViewer && (
             <div className="flex flex-wrap items-end gap-2 border-t pt-3">
               <div className="w-full space-y-1 sm:w-auto">
                 <Label htmlFor="new-ingredient">Add Ingredient</Label>
@@ -221,9 +224,10 @@ interface RowProps {
   brand: string;
   date: string;
   canManageSelection: boolean;
+  canEdit: boolean;
 }
 
-function ReconciliationTableRow({ row, outletId, brand, date, canManageSelection }: RowProps) {
+function ReconciliationTableRow({ row, outletId, brand, date, canManageSelection, canEdit }: RowProps) {
   const editor = useRowEditor(row, outletId, date);
   const removeClassAItem = useRemoveClassAItem();
 
@@ -239,25 +243,33 @@ function ReconciliationTableRow({ row, outletId, brand, date, canManageSelection
       </TableCell>
       <TableCell>{row.unit ?? '—'}</TableCell>
       <TableCell className="text-right">
-        <Input
-          type="number"
-          step="1"
-          min="0"
-          value={editor.opening}
-          onChange={(e) => editor.setOpening(e.target.value)}
-          className="h-8 w-24 text-right"
-        />
+        {canEdit ? (
+          <Input
+            type="number"
+            step="1"
+            min="0"
+            value={editor.opening}
+            onChange={(e) => editor.setOpening(e.target.value)}
+            className="h-8 w-24 text-right"
+          />
+        ) : (
+          formatNumber(row.opening)
+        )}
       </TableCell>
       <TableCell className="text-right">{formatNumber(row.factualClosingAI)}</TableCell>
       <TableCell className="text-right">
-        <Input
-          type="number"
-          step="1"
-          min="0"
-          value={editor.actualClosing}
-          onChange={(e) => editor.setActualClosing(e.target.value)}
-          className="h-8 w-24 text-right"
-        />
+        {canEdit ? (
+          <Input
+            type="number"
+            step="1"
+            min="0"
+            value={editor.actualClosing}
+            onChange={(e) => editor.setActualClosing(e.target.value)}
+            className="h-8 w-24 text-right"
+          />
+        ) : (
+          formatNumber(row.actualClosing)
+        )}
       </TableCell>
       <TableCell className="text-right">{formatNumber(row.salesToday)}</TableCell>
       <TableCell className="text-right">{formatNumber(row.predictedSales)}</TableCell>
@@ -270,9 +282,11 @@ function ReconciliationTableRow({ row, outletId, brand, date, canManageSelection
       </TableCell>
       <TableCell>
         <div className="flex items-center gap-1">
-          <Button size="sm" variant="outline" disabled={!editor.dirty || editor.saving} onClick={editor.handleSave}>
-            Save
-          </Button>
+          {canEdit && (
+            <Button size="sm" variant="outline" disabled={!editor.dirty || editor.saving} onClick={editor.handleSave}>
+              Save
+            </Button>
+          )}
           {canManageSelection && (
             <button
               type="button"
@@ -298,7 +312,7 @@ function StatTile({ label, value, tone }: { label: string; value: string; tone?:
   );
 }
 
-function ReconciliationCard({ row, outletId, brand, date, canManageSelection }: RowProps) {
+function ReconciliationCard({ row, outletId, brand, date, canManageSelection, canEdit }: RowProps) {
   const editor = useRowEditor(row, outletId, date);
   const removeClassAItem = useRemoveClassAItem();
 
@@ -328,28 +342,37 @@ function ReconciliationCard({ row, outletId, brand, date, canManageSelection }: 
         </div>
 
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-          <div className="space-y-1">
-            <Label className="text-[11px] text-muted-foreground">Opening</Label>
-            <Input
-              type="number"
-              step="1"
-              min="0"
-              value={editor.opening}
-              onChange={(e) => editor.setOpening(e.target.value)}
-              className="h-8"
-            />
-          </div>
-          <div className="space-y-1">
-            <Label className="text-[11px] text-muted-foreground">Actual Closing</Label>
-            <Input
-              type="number"
-              step="1"
-              min="0"
-              value={editor.actualClosing}
-              onChange={(e) => editor.setActualClosing(e.target.value)}
-              className="h-8"
-            />
-          </div>
+          {canEdit ? (
+            <>
+              <div className="space-y-1">
+                <Label className="text-[11px] text-muted-foreground">Opening</Label>
+                <Input
+                  type="number"
+                  step="1"
+                  min="0"
+                  value={editor.opening}
+                  onChange={(e) => editor.setOpening(e.target.value)}
+                  className="h-8"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[11px] text-muted-foreground">Actual Closing</Label>
+                <Input
+                  type="number"
+                  step="1"
+                  min="0"
+                  value={editor.actualClosing}
+                  onChange={(e) => editor.setActualClosing(e.target.value)}
+                  className="h-8"
+                />
+              </div>
+            </>
+          ) : (
+            <>
+              <StatTile label="Opening" value={formatNumber(row.opening)} />
+              <StatTile label="Actual Closing" value={formatNumber(row.actualClosing)} />
+            </>
+          )}
           <StatTile label="Closing (AI)" value={formatNumber(row.factualClosingAI)} />
           <StatTile label="Sales" value={formatNumber(row.salesToday)} />
           <StatTile label="Sales (AI)" value={formatNumber(row.predictedSales)} />
@@ -368,15 +391,17 @@ function ReconciliationCard({ row, outletId, brand, date, canManageSelection }: 
           <StatTile label="Wastage" value={formatNumber(row.derivedWastage)} tone={row.derivedWastage > 0 ? 'alert' : 'normal'} />
         </div>
 
-        <Button
-          size="sm"
-          variant="outline"
-          disabled={!editor.dirty || editor.saving}
-          onClick={editor.handleSave}
-          className="w-full"
-        >
-          Save
-        </Button>
+        {canEdit && (
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={!editor.dirty || editor.saving}
+            onClick={editor.handleSave}
+            className="w-full"
+          >
+            Save
+          </Button>
+        )}
       </CardContent>
     </Card>
   );

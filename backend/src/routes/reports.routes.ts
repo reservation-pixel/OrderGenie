@@ -6,6 +6,6 @@ import { getReportHandler } from '../controllers/reports.controller';
 
 const router = Router();
 
-router.get('/', verifyJwt, requireRole(RoleName.ADMIN, RoleName.MANAGEMENT), getReportHandler);
+router.get('/', verifyJwt, requireRole(RoleName.ADMIN, RoleName.MANAGEMENT, RoleName.VIEWER), getReportHandler);
 
 export default router;

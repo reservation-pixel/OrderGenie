@@ -14,6 +14,7 @@ import { Pagination } from '@/components/shared/Pagination';
 import { useWastageEntries, useCreateWastageEntry, useDeleteWastageEntry } from '@/hooks/useWastage';
 import { useResettingPage } from '@/hooks/useResettingPage';
 import { useFilterStore } from '@/store/filterStore';
+import { useAuthStore } from '@/store/authStore';
 import { formatDate, formatNumber } from '@/lib/format';
 import type { WastageReason } from '@/types/api';
 
@@ -32,6 +33,7 @@ const REASON_LABEL: Record<WastageReason, string> = Object.fromEntries(REASONS.m
 
 export function BrandWastageTab({ brand, outletId }: { brand: string; outletId: string }) {
   const { customFrom, customTo } = useFilterStore();
+  const isViewer = useAuthStore((s) => s.user)?.role === 'VIEWER';
   const filterKey = `${outletId}|${customFrom}|${customTo}`;
   const [page, setPage] = useResettingPage(filterKey);
   const { data, isLoading, isError } = useWastageEntries(page, 10, { outletId, brand });
@@ -75,6 +77,7 @@ export function BrandWastageTab({ brand, outletId }: { brand: string; outletId: 
 
   return (
     <div className="space-y-6">
+      {!isViewer && (
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Report Wastage</CardTitle>
@@ -132,6 +135,7 @@ export function BrandWastageTab({ brand, outletId }: { brand: string; outletId: 
           </Button>
         </CardContent>
       </Card>
+      )}
 
       <Card>
         <CardHeader>
@@ -181,13 +185,15 @@ export function BrandWastageTab({ brand, outletId }: { brand: string; outletId: 
                         <TableCell>{w.reportedByName ?? '—'}</TableCell>
                         <TableCell className="max-w-[200px] truncate">{w.notes ?? '—'}</TableCell>
                         <TableCell>
-                          <button
-                            type="button"
-                            onClick={() => deleteEntry.mutate(w.id)}
-                            className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
+                          {!isViewer && (
+                            <button
+                              type="button"
+                              onClick={() => deleteEntry.mutate(w.id)}
+                              className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))}

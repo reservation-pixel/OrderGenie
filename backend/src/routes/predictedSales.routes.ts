@@ -6,7 +6,7 @@ import { listPredictedSalesHandler } from '../controllers/predictedSales.control
 
 const router = Router();
 
-router.use(verifyJwt, requireRole(RoleName.ADMIN, RoleName.MANAGEMENT, RoleName.OUTLET_MANAGER), scopeToOutlet);
+router.use(verifyJwt, requireRole(RoleName.ADMIN, RoleName.MANAGEMENT, RoleName.OUTLET_MANAGER, RoleName.VIEWER), scopeToOutlet);
 
 router.get('/', listPredictedSalesHandler);
 

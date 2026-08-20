@@ -12,6 +12,7 @@ import { Pagination } from '@/components/shared/Pagination';
 import { useSoldOut, useUpsertSoldOutEntry } from '@/hooks/useSoldOut';
 import { useResettingPage } from '@/hooks/useResettingPage';
 import { useFilterStore } from '@/store/filterStore';
+import { useAuthStore } from '@/store/authStore';
 import { formatDate, formatNumber } from '@/lib/format';
 import type { SoldOutRow } from '@/types/api';
 
@@ -33,6 +34,7 @@ function ratioBadge(ratio: number | null) {
 
 export function BrandSoldOutTab({ brand, outletId }: { brand: string; outletId: string }) {
   const { customTo } = useFilterStore();
+  const isViewer = useAuthStore((s) => s.user)?.role === 'VIEWER';
   const date = customTo ?? todayIso();
   const filterKey = `${outletId}|${brand}|${date}`;
   const [page, setPage] = useResettingPage(filterKey);
@@ -89,7 +91,7 @@ export function BrandSoldOutTab({ brand, outletId }: { brand: string; outletId: 
                 </TableHeader>
                 <TableBody>
                   {data.rows.map((row) => (
-                    <SoldOutRowCells key={row.itemName} row={row} outletId={outletId} date={date} />
+                    <SoldOutRowCells key={row.itemName} row={row} outletId={outletId} date={date} canEdit={!isViewer} />
                   ))}
                 </TableBody>
               </Table>
@@ -98,7 +100,7 @@ export function BrandSoldOutTab({ brand, outletId }: { brand: string; outletId: 
           </>
         )}
 
-        {!isAllOutlets && (
+        {!isAllOutlets && !isViewer && (
           <div className="flex items-end gap-2 border-t pt-3">
             <div className="space-y-1">
               <Label htmlFor="new-sold-out-item">Item</Label>
@@ -137,7 +139,17 @@ export function BrandSoldOutTab({ brand, outletId }: { brand: string; outletId: 
   );
 }
 
-function SoldOutRowCells({ row, outletId, date }: { row: SoldOutRow; outletId: string; date: string }) {
+function SoldOutRowCells({
+  row,
+  outletId,
+  date,
+  canEdit,
+}: {
+  row: SoldOutRow;
+  outletId: string;
+  date: string;
+  canEdit: boolean;
+}) {
   const upsert = useUpsertSoldOutEntry();
   const [missedQty, setMissedQty] = useState(String(row.missedQty));
 
@@ -159,20 +171,26 @@ function SoldOutRowCells({ row, outletId, date }: { row: SoldOutRow; outletId: s
       </TableCell>
       <TableCell className="text-right">{formatNumber(row.soldQty)}</TableCell>
       <TableCell className="text-right">
-        <Input
-          type="number"
-          step="1"
-          min="0"
-          value={missedQty}
-          onChange={(e) => setMissedQty(sanitizeQty(e.target.value))}
-          className="h-8 w-24 text-right"
-        />
+        {canEdit ? (
+          <Input
+            type="number"
+            step="1"
+            min="0"
+            value={missedQty}
+            onChange={(e) => setMissedQty(sanitizeQty(e.target.value))}
+            className="h-8 w-24 text-right"
+          />
+        ) : (
+          formatNumber(row.missedQty)
+        )}
       </TableCell>
       <TableCell className="text-right">{ratioBadge(row.ratio)}</TableCell>
       <TableCell>
-        <Button size="sm" variant="outline" disabled={!dirty || upsert.isPending} onClick={handleSave}>
-          Save
-        </Button>
+        {canEdit && (
+          <Button size="sm" variant="outline" disabled={!dirty || upsert.isPending} onClick={handleSave}>
+            Save
+          </Button>
+        )}
       </TableCell>
     </TableRow>
   );

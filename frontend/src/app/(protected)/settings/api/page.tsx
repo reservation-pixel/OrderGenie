@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useApiConfigs, useUpdateApiConfig } from '@/hooks/useSettings';
+import { useAuthStore } from '@/store/authStore';
 import type { ApiConfigRow, ApiType } from '@/types/api';
 
 const API_LABELS: Record<ApiType, { label: string; description: string }> = {
@@ -21,6 +22,7 @@ const API_LABELS: Record<ApiType, { label: string; description: string }> = {
 export default function ApiConfigPage() {
   const { data, isLoading, isError } = useApiConfigs();
   const [editing, setEditing] = useState<ApiConfigRow | null>(null);
+  const isViewer = useAuthStore((s) => s.user)?.role === 'VIEWER';
 
   if (isLoading) {
     return (
@@ -60,9 +62,11 @@ export default function ApiConfigPage() {
                 <span className="font-mono">{cfg.accessTokenMasked ?? '—'}</span>
               </div>
               {cfg.notes && <p className="text-xs text-muted-foreground">{cfg.notes}</p>}
-              <Button variant="outline" size="sm" className="mt-2" onClick={() => setEditing(cfg)}>
-                Edit Credentials
-              </Button>
+              {!isViewer && (
+                <Button variant="outline" size="sm" className="mt-2" onClick={() => setEditing(cfg)}>
+                  Edit Credentials
+                </Button>
+              )}
             </CardContent>
           </Card>
         ))}

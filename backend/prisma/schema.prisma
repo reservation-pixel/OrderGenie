@@ -15,6 +15,7 @@ enum RoleName {
   MANAGEMENT
   OUTLET_MANAGER
   HEAD_CHEF
+  VIEWER
 }
 
 enum OutletType {

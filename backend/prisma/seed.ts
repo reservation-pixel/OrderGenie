@@ -49,7 +49,9 @@ async function seedRolesAndAdmin() {
                 ? 'Dashboards, outlet comparison, report exports'
                 : name === 'OUTLET_MANAGER'
                   ? 'Single assigned outlet: sales, inventory, purchase orders'
-                  : 'Single assigned outlet: enter daily Opening/Actual Closing on Reconciliation only',
+                  : name === 'HEAD_CHEF'
+                    ? 'Single assigned outlet: enter daily Opening/Actual Closing on Reconciliation only'
+                    : 'Read-only access across all outlets — no create/edit/delete, and no visibility into Users, Roles, Notifications, or Sync Schedule',
         },
       })
     )

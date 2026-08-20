@@ -6,7 +6,7 @@ import { listPurchaseOrdersHandler, getPurchaseOrderHandler } from '../controlle
 
 const router = Router();
 
-router.use(verifyJwt, requireRole(RoleName.ADMIN, RoleName.MANAGEMENT, RoleName.OUTLET_MANAGER), scopeToOutlet);
+router.use(verifyJwt, requireRole(RoleName.ADMIN, RoleName.MANAGEMENT, RoleName.OUTLET_MANAGER, RoleName.VIEWER), scopeToOutlet);
 
 router.get('/:id', getPurchaseOrderHandler);
 router.get('/', listPurchaseOrdersHandler);

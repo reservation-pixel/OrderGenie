@@ -6,10 +6,12 @@ import { listWastageHandler, createWastageHandler, deleteWastageHandler } from '
 
 const router = Router();
 
-router.use(verifyJwt, requireRole(RoleName.ADMIN, RoleName.MANAGEMENT, RoleName.OUTLET_MANAGER), scopeToOutlet);
+const canWrite = requireRole(RoleName.ADMIN, RoleName.MANAGEMENT, RoleName.OUTLET_MANAGER);
+
+router.use(verifyJwt, requireRole(RoleName.ADMIN, RoleName.MANAGEMENT, RoleName.OUTLET_MANAGER, RoleName.VIEWER), scopeToOutlet);
 
 router.get('/', listWastageHandler);
-router.post('/', createWastageHandler);
-router.delete('/:id', deleteWastageHandler);
+router.post('/', canWrite, createWastageHandler);
+router.delete('/:id', canWrite, deleteWastageHandler);
 
 export default router;

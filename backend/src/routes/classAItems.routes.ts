@@ -11,12 +11,14 @@ import {
 
 const router = Router();
 
-router.use(verifyJwt, requireRole(RoleName.ADMIN, RoleName.MANAGEMENT, RoleName.OUTLET_MANAGER), scopeToOutlet);
+const canWrite = requireRole(RoleName.ADMIN, RoleName.MANAGEMENT, RoleName.OUTLET_MANAGER);
+
+router.use(verifyJwt, requireRole(RoleName.ADMIN, RoleName.MANAGEMENT, RoleName.OUTLET_MANAGER, RoleName.VIEWER), scopeToOutlet);
 
 // /summary must be registered before /:id so "summary" isn't captured as an id param.
 router.get('/summary', getClassAItemsSummaryHandler);
 router.get('/', listClassAItemsHandler);
-router.post('/', addClassAItemHandler);
-router.delete('/:id', removeClassAItemHandler);
+router.post('/', canWrite, addClassAItemHandler);
+router.delete('/:id', canWrite, removeClassAItemHandler);
 
 export default router;

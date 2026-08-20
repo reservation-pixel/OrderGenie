@@ -19,10 +19,14 @@ export function Sidebar({ onNavigate, collapsed = false }: { onNavigate?: () => 
   const router = useRouter();
   const { user, logout } = useAuthStore();
   const isAdmin = user?.role === 'ADMIN';
+  const isViewer = user?.role === 'VIEWER';
   const toggleCollapsed = useSidebarStore((s) => s.toggle);
 
   const baseItems = user?.role === 'HEAD_CHEF' ? filterForHeadChef(NAV_ITEMS) : NAV_ITEMS;
-  const items = baseItems.filter((item) => !item.adminOnly || isAdmin);
+  // "Sales API" (brand-workspace children, adminOnly) stays admin-only — VIEWER only
+  // gains visibility into "Settings" itself, which then further restricts its own
+  // tabs (see settings/layout.tsx) down to Petpooja API + API Explorer.
+  const items = baseItems.filter((item) => !item.adminOnly || isAdmin || (isViewer && item.label === 'Settings'));
 
   const [manualToggle, setManualToggle] = useState<Record<string, boolean>>({});
 
