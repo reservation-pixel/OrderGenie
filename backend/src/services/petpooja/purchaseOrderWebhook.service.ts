@@ -12,18 +12,21 @@ import type { PetpoojaPurchaseOrderWebhookPayload } from './types';
  * API. So the webhook is verified against the same ApiType.PURCHASE credentials
  * already configured, rather than a separate credential set.
  *
- * Petpooja's own example payload has access_token/app_secret swapped (access_token
- * holds the app secret value and vice versa) — likely a docs typo, but worth
- * re-checking against a real webhook call before trusting this comparison.
+ * Petpooja's official API 8 (PO webhook) reference documents access_token/app_secret
+ * as swapped in this specific payload — their example shows
+ * `"access_token": "YOUR_APP_SECRET"` and `"app_secret": "YOUR_ACCESS_TOKEN"`.
+ * Confirmed as real documented behavior, not a docs typo (previously only suspected —
+ * see git history). app_key is NOT swapped. Both arrangements are accepted here so
+ * this doesn't break if Petpooja ever corrects it on their end.
  */
 export async function verifyWebhookCredentials(payload: PetpoojaPurchaseOrderWebhookPayload): Promise<boolean> {
   const credentials = await resolveCredentials(ApiType.PURCHASE);
   if (!credentials) return false;
-  return (
-    payload.app_key === credentials.appKey &&
-    payload.app_secret === credentials.appSecret &&
-    payload.access_token === credentials.accessToken
-  );
+  if (payload.app_key !== credentials.appKey) return false;
+
+  const swapped = payload.access_token === credentials.appSecret && payload.app_secret === credentials.accessToken;
+  const straight = payload.app_secret === credentials.appSecret && payload.access_token === credentials.accessToken;
+  return swapped || straight;
 }
 
 async function resolveVendorId(name: string | null): Promise<string | undefined> {
