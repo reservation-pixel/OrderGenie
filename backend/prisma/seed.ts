@@ -23,6 +23,8 @@ const KNOWN_OUTLETS = [
   { name: 'Capiche Uni', brand: 'Capiche', rid: '419174', city: 'Ahmedabad', type: OutletType.OUTLET, salesSyncCode: 'ihtnr4a7cy', inventorySyncCode: null },
   { name: 'Ahmedabad Bakery', brand: 'KG', rid: '410700', city: 'Ahmedabad', type: OutletType.OUTLET, salesSyncCode: null, inventorySyncCode: 'eh0x8kt3d2' },
   { name: 'Ahmedabad Store', brand: 'KG', rid: '358609', city: 'Ahmedabad', type: OutletType.OUTLET, salesSyncCode: null, inventorySyncCode: '4pwgfxrzs2' },
+  // Inventory API activated by Petpooja on 2026-09-16 — a separate store from "Ahmedabad Store" (rid 358609).
+  { name: 'Ahmedabad Store 2.0', brand: 'KG', rid: '443195', city: 'Ahmedabad', type: OutletType.OUTLET, salesSyncCode: null, inventorySyncCode: 'bygm1n7k38' },
   { name: 'Family', brand: 'KG', rid: '394370', city: null, type: OutletType.OUTLET, salesSyncCode: null, inventorySyncCode: 'x74bivacjk' },
   { name: 'KG Birthday Cake', brand: 'KG', rid: '383611', city: null, type: OutletType.OUTLET, salesSyncCode: null, inventorySyncCode: '9zrehnckm6' },
   { name: 'ODC', brand: 'KG', rid: '423523', city: null, type: OutletType.OUTLET, salesSyncCode: null, inventorySyncCode: 'jprtvkud2b' },
