@@ -22,6 +22,7 @@ import { cn } from '@/lib/utils';
 import type { ReconciliationRow } from '@/types/api';
 
 const VARIANCE_ALERT_PCT = 10;
+const PAGE_SIZE = 20;
 
 function sanitizeQty(raw: string): string {
   return raw.replace(/[^\d]/g, '');
@@ -145,9 +146,9 @@ export function BrandReconciliationTab({ brand, outletId }: { brand: string; out
   const date = customTo ?? todayIso();
   const filterKey = `${outletId}|${brand}|${date}`;
   const [page, setPage] = useResettingPage(filterKey);
-  // Every row on one page: an arranged order can't sensibly be dragged across a page boundary,
-  // and these lists are small (13 rows for Capiche split across two pages at the old size of 12).
-  const { data, isLoading, isError } = useReconciliation(page, 200, outletId, brand, date);
+  // Every row is fetched and paged here rather than on the server: a reorder has to save the
+  // brand's complete order, which a single server page wouldn't contain.
+  const { data, isLoading, isError } = useReconciliation(1, 200, outletId, brand, date);
   const saveOrder = useSaveReconciliationOrder();
 
   // Local copy of the order so a drop moves the row instantly; re-seeded whenever the server's
@@ -162,6 +163,12 @@ export function BrandReconciliationTab({ brand, outletId }: { brand: string; out
   }
   const rowByName = new Map(serverRows.map((r) => [r.itemName, r]));
   const orderedRows = order.map((name) => rowByName.get(name)).filter((r): r is ReconciliationRow => Boolean(r));
+
+  const totalPages = Math.max(1, Math.ceil(orderedRows.length / PAGE_SIZE));
+  // Clamped so removing an item from the last page doesn't strand the view on an empty page.
+  const currentPage = Math.min(page, totalPages);
+  const pageStart = (currentPage - 1) * PAGE_SIZE;
+  const pageRows = orderedRows.slice(pageStart, pageStart + PAGE_SIZE);
 
   function moveRow(from: number, to: number) {
     if (from === to || from < 0 || to < 0 || from >= order.length || to >= order.length) return;
@@ -325,11 +332,11 @@ export function BrandReconciliationTab({ brand, outletId }: { brand: string; out
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {orderedRows.map((row, index) => (
+                    {pageRows.map((row, index) => (
                       <ReconciliationTableRow
                         key={`${outletId}|${date}|${row.itemName}`}
                         row={row}
-                        dragProps={dragPropsFor(index)}
+                        dragProps={dragPropsFor(pageStart + index)}
                         dragHandle={
                           canReorder ? (
                             <span
@@ -355,30 +362,39 @@ export function BrandReconciliationTab({ brand, outletId }: { brand: string; out
 
               {/* Mobile: stacked cards instead of a cramped 13-column table. */}
               <div className="space-y-3 md:hidden">
-                {orderedRows.map((row, index) => (
-                  <ReconciliationCard
-                    key={`${outletId}|${date}|${row.itemName}`}
-                    row={row}
-                    // Drag doesn't work on touch screens, so the super admin gets arrows here.
-                    onMove={
-                      canReorder
-                        ? {
-                            up: index > 0 ? () => moveRow(index, index - 1) : undefined,
-                            down: index < orderedRows.length - 1 ? () => moveRow(index, index + 1) : undefined,
-                          }
-                        : undefined
-                    }
-                    outletId={outletId}
-                    brand={brand}
-                    date={date}
-                    canManageSelection={!isHeadChef && !isViewer}
-                    canEdit={!isViewer}
-                    onLinkPo={setAliasTarget}
-                  />
-                ))}
+                {pageRows.map((row, pageIndex) => {
+                  const index = pageStart + pageIndex;
+                  return (
+                    <ReconciliationCard
+                      key={`${outletId}|${date}|${row.itemName}`}
+                      row={row}
+                      // Drag doesn't work on touch screens, so the super admin gets arrows here.
+                      // Indices are into the full list, so the edge rows can cross onto the next page.
+                      onMove={
+                        canReorder
+                          ? {
+                              up: index > 0 ? () => moveRow(index, index - 1) : undefined,
+                              down: index < orderedRows.length - 1 ? () => moveRow(index, index + 1) : undefined,
+                            }
+                          : undefined
+                      }
+                      outletId={outletId}
+                      brand={brand}
+                      date={date}
+                      canManageSelection={!isHeadChef && !isViewer}
+                      canEdit={!isViewer}
+                      onLinkPo={setAliasTarget}
+                    />
+                  );
+                })}
               </div>
 
-              <Pagination meta={data.meta} onPageChange={setPage} />
+              {totalPages > 1 && (
+                <Pagination
+                  meta={{ page: currentPage, pageSize: PAGE_SIZE, total: orderedRows.length, totalPages }}
+                  onPageChange={setPage}
+                />
+              )}
             </>
           )}
 
