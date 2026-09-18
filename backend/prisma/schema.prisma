@@ -428,6 +428,21 @@ model PurchaseAlias {
   @@index([brand, itemName])
 }
 
+// The order ingredients appear in on the Reconciliation page, set by dragging rows. One order
+// per brand, shared by all its outlets and users. Keyed by itemName (like PurchaseAlias) because
+// rows can come from CATEGORY expansion and have no ClassAItem of their own. Items with no row
+// here sort after the ordered ones, alphabetically.
+model ReconciliationItemOrder {
+  id        String   @id @default(cuid())
+  brand     String
+  itemName  String
+  position  Int
+  updatedAt DateTime @updatedAt
+
+  @@unique([brand, itemName])
+  @@index([brand, position])
+}
+
 model PredictedSale {
   id           String               @id @default(cuid())
   outletId     String

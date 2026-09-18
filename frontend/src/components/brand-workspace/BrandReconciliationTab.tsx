@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { X } from 'lucide-react';
+import { useEffect, useState, type ComponentProps } from 'react';
+import { ArrowDown, ArrowUp, GripVertical, X } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -12,7 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Pagination } from '@/components/shared/Pagination';
 import { SuggestionChips } from '@/components/brand-workspace/BrandClassAItemsTab';
 import { PurchaseAliasEditor } from '@/components/brand-workspace/PurchaseAliasEditor';
-import { useReconciliation, useUpsertReconciliationEntry } from '@/hooks/useReconciliation';
+import { useReconciliation, useSaveReconciliationOrder, useUpsertReconciliationEntry } from '@/hooks/useReconciliation';
 import { useAddClassAItem, useRemoveClassAItem } from '@/hooks/useClassAItems';
 import { useResettingPage } from '@/hooks/useResettingPage';
 import { useFilterStore } from '@/store/filterStore';
@@ -140,10 +140,78 @@ export function BrandReconciliationTab({ brand, outletId }: { brand: string; out
   const { user } = useAuthStore();
   const isHeadChef = user?.role === 'HEAD_CHEF';
   const isViewer = user?.role === 'VIEWER';
+  // The row order is shared by everyone on the brand, so only the super admin arranges it.
+  const canReorder = user?.role === 'SUPER_ADMIN';
   const date = customTo ?? todayIso();
   const filterKey = `${outletId}|${brand}|${date}`;
   const [page, setPage] = useResettingPage(filterKey);
-  const { data, isLoading, isError } = useReconciliation(page, 12, outletId, brand, date);
+  // Every row on one page: an arranged order can't sensibly be dragged across a page boundary,
+  // and these lists are small (13 rows for Capiche split across two pages at the old size of 12).
+  const { data, isLoading, isError } = useReconciliation(page, 200, outletId, brand, date);
+  const saveOrder = useSaveReconciliationOrder();
+
+  // Local copy of the order so a drop moves the row instantly; re-seeded whenever the server's
+  // order changes (adjust-during-render, same pattern as useResettingPage).
+  const serverRows = data?.rows ?? [];
+  const serverKey = serverRows.map((r) => r.itemName).join('\u0000');
+  const [order, setOrder] = useState<string[]>([]);
+  const [orderKey, setOrderKey] = useState('');
+  if (serverKey !== orderKey) {
+    setOrderKey(serverKey);
+    setOrder(serverRows.map((r) => r.itemName));
+  }
+  const rowByName = new Map(serverRows.map((r) => [r.itemName, r]));
+  const orderedRows = order.map((name) => rowByName.get(name)).filter((r): r is ReconciliationRow => Boolean(r));
+
+  function moveRow(from: number, to: number) {
+    if (from === to || from < 0 || to < 0 || from >= order.length || to >= order.length) return;
+    const next = [...order];
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    setOrder(next);
+    saveOrder.mutate({ brand, itemNames: next });
+  }
+
+  // A row only becomes draggable while its grip is held — otherwise selecting text in the
+  // Opening / Actual Closing boxes would start dragging the whole row.
+  const [dragArmed, setDragArmed] = useState(false);
+  const [dragFrom, setDragFrom] = useState<number | null>(null);
+  const [dragOver, setDragOver] = useState<number | null>(null);
+  useEffect(() => {
+    if (!dragArmed) return;
+    const disarm = () => setDragArmed(false);
+    window.addEventListener('mouseup', disarm);
+    return () => window.removeEventListener('mouseup', disarm);
+  }, [dragArmed]);
+
+  function dragPropsFor(index: number): ComponentProps<'tr'> {
+    if (!canReorder) return {};
+    return {
+      draggable: dragArmed,
+      onDragStart: (e) => {
+        setDragFrom(index);
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', String(index));
+      },
+      onDragOver: (e) => {
+        e.preventDefault();
+        if (dragOver !== index) setDragOver(index);
+      },
+      onDrop: (e) => {
+        e.preventDefault();
+        if (dragFrom !== null) moveRow(dragFrom, index);
+      },
+      onDragEnd: () => {
+        setDragFrom(null);
+        setDragOver(null);
+        setDragArmed(false);
+      },
+      className: cn(
+        dragFrom === index && 'opacity-40',
+        dragOver === index && dragFrom !== null && dragFrom !== index && 'border-t-2 border-t-primary'
+      ),
+    };
+  }
   const addClassAItem = useAddClassAItem();
 
   const [newItemName, setNewItemName] = useState('');
@@ -204,6 +272,7 @@ export function BrandReconciliationTab({ brand, outletId }: { brand: string; out
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      {canReorder && <TableHead className="w-6" />}
                       <TableHead>Ingredient</TableHead>
                       <TableHead>Unit</TableHead>
                       <TableHead className="text-center">Opening</TableHead>
@@ -256,10 +325,22 @@ export function BrandReconciliationTab({ brand, outletId }: { brand: string; out
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {data.rows.map((row) => (
+                    {orderedRows.map((row, index) => (
                       <ReconciliationTableRow
                         key={`${outletId}|${date}|${row.itemName}`}
                         row={row}
+                        dragProps={dragPropsFor(index)}
+                        dragHandle={
+                          canReorder ? (
+                            <span
+                              onMouseDown={() => setDragArmed(true)}
+                              title="Drag to reorder — applies for everyone on this brand"
+                              className="flex cursor-grab text-muted-foreground active:cursor-grabbing"
+                            >
+                              <GripVertical className="h-4 w-4" />
+                            </span>
+                          ) : undefined
+                        }
                         outletId={outletId}
                         brand={brand}
                         date={date}
@@ -274,10 +355,19 @@ export function BrandReconciliationTab({ brand, outletId }: { brand: string; out
 
               {/* Mobile: stacked cards instead of a cramped 13-column table. */}
               <div className="space-y-3 md:hidden">
-                {data.rows.map((row) => (
+                {orderedRows.map((row, index) => (
                   <ReconciliationCard
                     key={`${outletId}|${date}|${row.itemName}`}
                     row={row}
+                    // Drag doesn't work on touch screens, so the super admin gets arrows here.
+                    onMove={
+                      canReorder
+                        ? {
+                            up: index > 0 ? () => moveRow(index, index - 1) : undefined,
+                            down: index < orderedRows.length - 1 ? () => moveRow(index, index + 1) : undefined,
+                          }
+                        : undefined
+                    }
                     outletId={outletId}
                     brand={brand}
                     date={date}
@@ -339,6 +429,10 @@ export function BrandReconciliationTab({ brand, outletId }: { brand: string; out
 
 interface RowProps {
   row: ReconciliationRow;
+  /** Present only for the super admin, who can rearrange rows. */
+  dragProps?: ComponentProps<'tr'>;
+  dragHandle?: React.ReactNode;
+  onMove?: { up?: () => void; down?: () => void };
   onLinkPo: (row: ReconciliationRow) => void;
   outletId: string;
   brand: string;
@@ -347,12 +441,13 @@ interface RowProps {
   canEdit: boolean;
 }
 
-function ReconciliationTableRow({ row, outletId, brand, date, canManageSelection, canEdit, onLinkPo }: RowProps) {
+function ReconciliationTableRow({ row, outletId, brand, date, canManageSelection, canEdit, onLinkPo, dragProps, dragHandle }: RowProps) {
   const editor = useRowEditor(row, outletId, date);
   const removeClassAItem = useRemoveClassAItem();
 
   return (
-    <TableRow>
+    <TableRow {...dragProps}>
+      {dragHandle && <TableCell className="w-6 px-1">{dragHandle}</TableCell>}
       <TableCell className="font-medium">
         {row.itemName}
         {entryStateBadge(row, 'ml-2')}
@@ -452,7 +547,7 @@ function StatTile({ label, value, tone }: { label: string; value: string; tone?:
   );
 }
 
-function ReconciliationCard({ row, outletId, brand, date, canManageSelection, canEdit, onLinkPo }: RowProps) {
+function ReconciliationCard({ row, outletId, brand, date, canManageSelection, canEdit, onLinkPo, onMove }: RowProps) {
   const editor = useRowEditor(row, outletId, date);
   const removeClassAItem = useRemoveClassAItem();
 
@@ -465,6 +560,28 @@ function ReconciliationCard({ row, outletId, brand, date, canManageSelection, ca
             {row.unit && <span className="ml-1.5 text-xs text-muted-foreground">({row.unit})</span>}
             {entryStateBadge(row, 'ml-2 align-middle')}
           </div>
+          {onMove && (
+            <div className="flex shrink-0 gap-0.5">
+              <button
+                type="button"
+                disabled={!onMove.up}
+                onClick={onMove.up}
+                title="Move up"
+                className="rounded-md p-1 text-muted-foreground hover:bg-muted disabled:opacity-30"
+              >
+                <ArrowUp className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                disabled={!onMove.down}
+                onClick={onMove.down}
+                title="Move down"
+                className="rounded-md p-1 text-muted-foreground hover:bg-muted disabled:opacity-30"
+              >
+                <ArrowDown className="h-4 w-4" />
+              </button>
+            </div>
+          )}
           {canManageSelection && (
             <button
               type="button"

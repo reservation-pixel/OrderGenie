@@ -39,3 +39,20 @@ export function useUpsertReconciliationEntry() {
     onError: () => toast.error('Failed to save'),
   });
 }
+
+/**
+ * Saves the super admin's arranged row order for a brand. Every outlet of the brand shares it,
+ * so all reconciliation queries are invalidated rather than just the one on screen.
+ */
+export function useSaveReconciliationOrder() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ brand, itemNames }: { brand: string; itemNames: string[] }) =>
+      apiClient.put('/reconciliation/order', { brand, itemNames }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['reconciliation'] }),
+    onError: () => {
+      toast.error('Could not save the new order');
+      qc.invalidateQueries({ queryKey: ['reconciliation'] });
+    },
+  });
+}

@@ -450,6 +450,7 @@ export async function getReconciliationDashboard(query: ReconciliationQuery) {
     prevDayEntries,
     predictedRows,
     unitByItem,
+    itemOrder,
   ] = await Promise.all([
     getRecipeRules(brand),
     listClassAItems(brand),
@@ -465,6 +466,7 @@ export async function getReconciliationDashboard(query: ReconciliationQuery) {
     getManualEntries(outletId, addDays(day, -1)),
     getPredictedSalesRows(outletId, day),
     getUnitFromPO(outletId),
+    getItemOrder(brand),
   ]);
 
   const universe = buildIngredientUniverse(classAEntries, categorySoldItems);
@@ -514,7 +516,16 @@ export async function getReconciliationDashboard(query: ReconciliationQuery) {
         dayKey
       );
     })
-    .sort((a, b) => a.itemName.localeCompare(b.itemName));
+    // Super admin's arranged order first; anything not yet placed (a new Class A Item, a newly
+    // expanded category item) falls to the bottom alphabetically until it's dragged into place.
+    .sort((a, b) => {
+      const pa = itemOrder.get(a.itemName);
+      const pb = itemOrder.get(b.itemName);
+      if (pa !== undefined && pb !== undefined) return pa - pb;
+      if (pa !== undefined) return -1;
+      if (pb !== undefined) return 1;
+      return a.itemName.localeCompare(b.itemName);
+    });
 
   const pagination = parsePagination(query as unknown as Record<string, unknown>);
   const total = rows.length;
@@ -524,6 +535,24 @@ export async function getReconciliationDashboard(query: ReconciliationQuery) {
     rows: rows.slice(skip, skip + take),
     meta: paginationMeta(pagination, total),
   };
+}
+
+/** itemName -> position in the brand's arranged Reconciliation order. */
+async function getItemOrder(brand: string): Promise<Map<string, number>> {
+  const rows = await prisma.reconciliationItemOrder.findMany({ where: { brand }, select: { itemName: true, position: true } });
+  return new Map(rows.map((r) => [r.itemName, r.position]));
+}
+
+/** Replaces a brand's whole arranged order; positions follow the list order. */
+export async function saveItemOrder(brand: string, itemNames: string[]) {
+  const unique = [...new Set(itemNames.map((n) => n.trim()).filter(Boolean))];
+  await prisma.$transaction([
+    prisma.reconciliationItemOrder.deleteMany({ where: { brand } }),
+    prisma.reconciliationItemOrder.createMany({
+      data: unique.map((itemName, position) => ({ brand, itemName, position })),
+    }),
+  ]);
+  return { brand, count: unique.length };
 }
 
 export interface UpsertReconciliationEntryInput {

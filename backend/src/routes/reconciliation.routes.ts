@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { RoleName } from '@prisma/client';
 import { verifyJwt } from '../middleware/auth.middleware';
 import { requireRole, scopeToBrand, scopeToOutlet } from '../middleware/rbac.middleware';
-import { listReconciliationHandler, upsertReconciliationEntryHandler } from '../controllers/reconciliation.controller';
+import { listReconciliationHandler, saveItemOrderHandler, upsertReconciliationEntryHandler } from '../controllers/reconciliation.controller';
 
 const router = Router();
 
@@ -14,5 +14,7 @@ const canWrite = requireRole(RoleName.SUPER_ADMIN, RoleName.ADMIN, RoleName.MANA
 
 router.get('/', listReconciliationHandler);
 router.post('/entries', canWrite, upsertReconciliationEntryHandler);
+// The row order is shared by every user of the brand, so only the super admin arranges it.
+router.put('/order', requireRole(RoleName.SUPER_ADMIN), saveItemOrderHandler);
 
 export default router;
