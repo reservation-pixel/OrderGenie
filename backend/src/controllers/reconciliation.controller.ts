@@ -6,7 +6,6 @@ import {
   getReconciliationDashboard,
   saveItemOrder,
   upsertReconciliationEntry,
-  deleteReconciliationEntry,
   clearAllOpeningsForDay,
   clearAllClosingsForDay,
 } from '../services/reconciliation/reconciliation.service';
@@ -30,18 +29,6 @@ export const upsertReconciliationEntryHandler = asyncHandler(async (req: Request
   const input = upsertSchema.parse(req.body);
   const row = await upsertReconciliationEntry(input);
   return created(res, row);
-});
-
-const deleteQuerySchema = z.object({
-  outletId: z.string().min(1),
-  itemName: z.string().min(1),
-  date: z.string().min(1),
-});
-
-export const deleteReconciliationEntryHandler = asyncHandler(async (req: Request, res: Response) => {
-  const input = deleteQuerySchema.parse(req.query);
-  await deleteReconciliationEntry(input);
-  return ok(res, { removed: true });
 });
 
 const clearDaySchema = z.object({

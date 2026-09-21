@@ -40,19 +40,6 @@ export function useUpsertReconciliationEntry() {
   });
 }
 
-export function useClearReconciliationEntry() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ outletId, itemName, date }: { outletId: string; itemName: string; date: string }) =>
-      apiClient.delete('/reconciliation/entries', { params: { outletId, itemName, date } }),
-    onSuccess: () => {
-      toast.success('Cleared');
-      qc.invalidateQueries({ queryKey: ['reconciliation'] });
-    },
-    onError: () => toast.error('Failed to clear'),
-  });
-}
-
 export function useClearAllOpenings() {
   const qc = useQueryClient();
   return useMutation({

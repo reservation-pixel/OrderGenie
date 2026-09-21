@@ -613,21 +613,6 @@ export async function upsertReconciliationEntry(input: UpsertReconciliationEntry
   });
 }
 
-export interface DeleteReconciliationEntryInput {
-  outletId: string;
-  itemName: string;
-  date: string;
-}
-
-export async function deleteReconciliationEntry(input: DeleteReconciliationEntryInput) {
-  const day = parseDateParam(input.date);
-  // deleteMany (not delete) so clicking Clear on an already-empty row is a harmless no-op
-  // instead of a 404 — e.g. a double-click, or the row was already cleared elsewhere.
-  await prisma.inventory.deleteMany({
-    where: { outletId: input.outletId, itemName: input.itemName, stockDate: day },
-  });
-}
-
 /** Same ingredient universe getReconciliationDashboard shows, recomputed fresh so a bulk
  * clear only ever touches items actually tracked/visible for this brand+outlet+day. */
 async function getIngredientItemNames(outletId: string, brand: string, day: Date): Promise<string[]> {

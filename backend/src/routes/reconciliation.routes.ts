@@ -6,7 +6,6 @@ import {
   listReconciliationHandler,
   saveItemOrderHandler,
   upsertReconciliationEntryHandler,
-  deleteReconciliationEntryHandler,
   clearAllOpeningsHandler,
   clearAllClosingsHandler,
 } from '../controllers/reconciliation.controller';
@@ -21,7 +20,6 @@ const canWrite = requireRole(RoleName.SUPER_ADMIN, RoleName.ADMIN, RoleName.MANA
 
 router.get('/', listReconciliationHandler);
 router.post('/entries', canWrite, upsertReconciliationEntryHandler);
-router.delete('/entries', canWrite, deleteReconciliationEntryHandler);
 router.delete('/entries/openings', canWrite, clearAllOpeningsHandler);
 router.delete('/entries/closings', canWrite, clearAllClosingsHandler);
 // The row order is shared by every user of the brand, so only the super admin arranges it.

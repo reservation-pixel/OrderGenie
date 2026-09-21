@@ -17,7 +17,6 @@ import {
   useReconciliation,
   useSaveReconciliationOrder,
   useUpsertReconciliationEntry,
-  useClearReconciliationEntry,
   useClearAllOpenings,
   useClearAllClosings,
 } from '@/hooks/useReconciliation';
@@ -231,7 +230,6 @@ export function BrandReconciliationTab({ brand, outletId }: { brand: string; out
 
   const [newItemName, setNewItemName] = useState('');
   const [aliasTarget, setAliasTarget] = useState<ReconciliationRow | null>(null);
-  const [clearTarget, setClearTarget] = useState<ReconciliationRow | null>(null);
   const [bulkClearField, setBulkClearField] = useState<'opening' | 'closing' | null>(null);
   const isAllOutlets = outletId === 'all';
 
@@ -364,7 +362,6 @@ export function BrandReconciliationTab({ brand, outletId }: { brand: string; out
                         canManageSelection={!isHeadChef && !isViewer}
                         canEdit={!isViewer}
                         onLinkPo={setAliasTarget}
-                        onClear={setClearTarget}
                       />
                     ))}
                   </TableBody>
@@ -395,7 +392,6 @@ export function BrandReconciliationTab({ brand, outletId }: { brand: string; out
                       canManageSelection={!isHeadChef && !isViewer}
                       canEdit={!isViewer}
                       onLinkPo={setAliasTarget}
-                      onClear={setClearTarget}
                     />
                   );
                 })}
@@ -463,7 +459,6 @@ export function BrandReconciliationTab({ brand, outletId }: { brand: string; out
         />
       )}
 
-      <ClearEntryDialog row={clearTarget} outletId={outletId} date={date} onClose={() => setClearTarget(null)} />
       <BulkClearDialog
         field={bulkClearField}
         outletId={outletId}
@@ -472,50 +467,6 @@ export function BrandReconciliationTab({ brand, outletId }: { brand: string; out
         onClose={() => setBulkClearField(null)}
       />
     </div>
-  );
-}
-
-function ClearEntryDialog({
-  row,
-  outletId,
-  date,
-  onClose,
-}: {
-  row: ReconciliationRow | null;
-  outletId: string;
-  date: string;
-  onClose: () => void;
-}) {
-  const clearEntry = useClearReconciliationEntry();
-
-  return (
-    <Dialog open={Boolean(row)} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Clear {row?.itemName}?</DialogTitle>
-        </DialogHeader>
-        <p className="text-sm text-muted-foreground">
-          This deletes {row ? formatDate(date) : ''}&apos;s Opening and Actual Closing entry for this item entirely —
-          not just resets it to zero. You can re-enter fresh numbers afterward and everything (Closing (AI), Wastage,
-          the next day&apos;s carry-forward) will recalculate normally.
-        </p>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button
-            variant="destructive"
-            disabled={clearEntry.isPending}
-            onClick={() => {
-              if (!row) return;
-              clearEntry.mutate({ outletId, itemName: row.itemName, date }, { onSuccess: onClose });
-            }}
-          >
-            Clear
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
   );
 }
 
@@ -574,7 +525,6 @@ interface RowProps {
   dragHandle?: React.ReactNode;
   onMove?: { up?: () => void; down?: () => void };
   onLinkPo: (row: ReconciliationRow) => void;
-  onClear: (row: ReconciliationRow) => void;
   outletId: string;
   brand: string;
   date: string;
@@ -582,7 +532,7 @@ interface RowProps {
   canEdit: boolean;
 }
 
-function ReconciliationTableRow({ row, outletId, brand, date, canManageSelection, canEdit, onLinkPo, onClear, dragProps, dragHandle }: RowProps) {
+function ReconciliationTableRow({ row, outletId, brand, date, canManageSelection, canEdit, onLinkPo, dragProps, dragHandle }: RowProps) {
   const editor = useRowEditor(row, outletId, date);
   const removeClassAItem = useRemoveClassAItem();
 
@@ -663,17 +613,6 @@ function ReconciliationTableRow({ row, outletId, brand, date, canManageSelection
               Save
             </Button>
           )}
-          {canEdit && (
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={!row.hasManualEntry}
-              onClick={() => onClear(row)}
-              className="text-destructive hover:text-destructive"
-            >
-              Clear
-            </Button>
-          )}
           {canManageSelection && (
             <button
               type="button"
@@ -699,7 +638,7 @@ function StatTile({ label, value, tone }: { label: string; value: string; tone?:
   );
 }
 
-function ReconciliationCard({ row, outletId, brand, date, canManageSelection, canEdit, onLinkPo, onClear, onMove }: RowProps) {
+function ReconciliationCard({ row, outletId, brand, date, canManageSelection, canEdit, onLinkPo, onMove }: RowProps) {
   const editor = useRowEditor(row, outletId, date);
   const removeClassAItem = useRemoveClassAItem();
 
@@ -803,26 +742,15 @@ function ReconciliationCard({ row, outletId, brand, date, canManageSelection, ca
         </div>
 
         {canEdit && (
-          <div className="flex gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={!editor.dirty || editor.saving}
-              onClick={editor.handleSave}
-              className={cn('flex-1', editor.justSaved && 'border-green-500 bg-green-50 text-green-700 hover:bg-green-100')}
-            >
-              Save
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={!row.hasManualEntry}
-              onClick={() => onClear(row)}
-              className="text-destructive hover:text-destructive"
-            >
-              Clear
-            </Button>
-          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={!editor.dirty || editor.saving}
+            onClick={editor.handleSave}
+            className={cn('w-full', editor.justSaved && 'border-green-500 bg-green-50 text-green-700 hover:bg-green-100')}
+          >
+            Save
+          </Button>
         )}
       </CardContent>
     </Card>
