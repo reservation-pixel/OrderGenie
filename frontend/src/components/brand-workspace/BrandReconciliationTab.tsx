@@ -9,10 +9,18 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Pagination } from '@/components/shared/Pagination';
 import { SuggestionChips } from '@/components/brand-workspace/BrandClassAItemsTab';
 import { PurchaseAliasEditor } from '@/components/brand-workspace/PurchaseAliasEditor';
-import { useReconciliation, useSaveReconciliationOrder, useUpsertReconciliationEntry } from '@/hooks/useReconciliation';
+import {
+  useReconciliation,
+  useSaveReconciliationOrder,
+  useUpsertReconciliationEntry,
+  useClearReconciliationEntry,
+  useClearAllOpenings,
+  useClearAllClosings,
+} from '@/hooks/useReconciliation';
 import { useAddClassAItem, useRemoveClassAItem } from '@/hooks/useClassAItems';
 import { useResettingPage } from '@/hooks/useResettingPage';
 import { useFilterStore } from '@/store/filterStore';
@@ -223,6 +231,8 @@ export function BrandReconciliationTab({ brand, outletId }: { brand: string; out
 
   const [newItemName, setNewItemName] = useState('');
   const [aliasTarget, setAliasTarget] = useState<ReconciliationRow | null>(null);
+  const [clearTarget, setClearTarget] = useState<ReconciliationRow | null>(null);
+  const [bulkClearField, setBulkClearField] = useState<'opening' | 'closing' | null>(null);
   const isAllOutlets = outletId === 'all';
 
   function handleAddIngredient() {
@@ -354,6 +364,7 @@ export function BrandReconciliationTab({ brand, outletId }: { brand: string; out
                         canManageSelection={!isHeadChef && !isViewer}
                         canEdit={!isViewer}
                         onLinkPo={setAliasTarget}
+                        onClear={setClearTarget}
                       />
                     ))}
                   </TableBody>
@@ -384,6 +395,7 @@ export function BrandReconciliationTab({ brand, outletId }: { brand: string; out
                       canManageSelection={!isHeadChef && !isViewer}
                       canEdit={!isViewer}
                       onLinkPo={setAliasTarget}
+                      onClear={setClearTarget}
                     />
                   );
                 })}
@@ -394,6 +406,17 @@ export function BrandReconciliationTab({ brand, outletId }: { brand: string; out
                   meta={{ page: currentPage, pageSize: PAGE_SIZE, total: orderedRows.length, totalPages }}
                   onPageChange={setPage}
                 />
+              )}
+
+              {!isHeadChef && !isViewer && (
+                <div className="flex flex-wrap gap-2 border-t pt-3">
+                  <Button size="sm" variant="outline" className="text-destructive hover:text-destructive" onClick={() => setBulkClearField('opening')}>
+                    Clear All Openings
+                  </Button>
+                  <Button size="sm" variant="outline" className="text-destructive hover:text-destructive" onClick={() => setBulkClearField('closing')}>
+                    Clear All Closings
+                  </Button>
+                </div>
               )}
             </>
           )}
@@ -439,7 +462,108 @@ export function BrandReconciliationTab({ brand, outletId }: { brand: string; out
           onClose={() => setAliasTarget(null)}
         />
       )}
+
+      <ClearEntryDialog row={clearTarget} outletId={outletId} date={date} onClose={() => setClearTarget(null)} />
+      <BulkClearDialog
+        field={bulkClearField}
+        outletId={outletId}
+        brand={brand}
+        date={date}
+        onClose={() => setBulkClearField(null)}
+      />
     </div>
+  );
+}
+
+function ClearEntryDialog({
+  row,
+  outletId,
+  date,
+  onClose,
+}: {
+  row: ReconciliationRow | null;
+  outletId: string;
+  date: string;
+  onClose: () => void;
+}) {
+  const clearEntry = useClearReconciliationEntry();
+
+  return (
+    <Dialog open={Boolean(row)} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Clear {row?.itemName}?</DialogTitle>
+        </DialogHeader>
+        <p className="text-sm text-muted-foreground">
+          This deletes {row ? formatDate(date) : ''}&apos;s Opening and Actual Closing entry for this item entirely —
+          not just resets it to zero. You can re-enter fresh numbers afterward and everything (Closing (AI), Wastage,
+          the next day&apos;s carry-forward) will recalculate normally.
+        </p>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            variant="destructive"
+            disabled={clearEntry.isPending}
+            onClick={() => {
+              if (!row) return;
+              clearEntry.mutate({ outletId, itemName: row.itemName, date }, { onSuccess: onClose });
+            }}
+          >
+            Clear
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function BulkClearDialog({
+  field,
+  outletId,
+  brand,
+  date,
+  onClose,
+}: {
+  field: 'opening' | 'closing' | null;
+  outletId: string;
+  brand: string;
+  date: string;
+  onClose: () => void;
+}) {
+  const clearAllOpenings = useClearAllOpenings();
+  const clearAllClosings = useClearAllClosings();
+  const mutation = field === 'closing' ? clearAllClosings : clearAllOpenings;
+  const label = field === 'closing' ? 'Actual Closing' : 'Opening';
+
+  return (
+    <Dialog open={Boolean(field)} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Clear all {label} for {formatDate(date)}?</DialogTitle>
+        </DialogHeader>
+        <p className="text-sm text-muted-foreground">
+          This clears the {label} entry for every tracked ingredient on this day — not just the ones on this page.
+          {field === 'closing'
+            ? ' Opening values are left untouched.'
+            : ' Actual Closing values are left untouched, and already-correct auto-filled Openings are left alone too.'}
+          {' '}A row with nothing left in either field is removed entirely; you can re-enter fresh numbers afterward.
+        </p>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            variant="destructive"
+            disabled={mutation.isPending}
+            onClick={() => mutation.mutate({ outletId, brand, date }, { onSuccess: onClose })}
+          >
+            Clear All
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -450,6 +574,7 @@ interface RowProps {
   dragHandle?: React.ReactNode;
   onMove?: { up?: () => void; down?: () => void };
   onLinkPo: (row: ReconciliationRow) => void;
+  onClear: (row: ReconciliationRow) => void;
   outletId: string;
   brand: string;
   date: string;
@@ -457,7 +582,7 @@ interface RowProps {
   canEdit: boolean;
 }
 
-function ReconciliationTableRow({ row, outletId, brand, date, canManageSelection, canEdit, onLinkPo, dragProps, dragHandle }: RowProps) {
+function ReconciliationTableRow({ row, outletId, brand, date, canManageSelection, canEdit, onLinkPo, onClear, dragProps, dragHandle }: RowProps) {
   const editor = useRowEditor(row, outletId, date);
   const removeClassAItem = useRemoveClassAItem();
 
@@ -538,6 +663,17 @@ function ReconciliationTableRow({ row, outletId, brand, date, canManageSelection
               Save
             </Button>
           )}
+          {canEdit && (
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={!row.hasManualEntry}
+              onClick={() => onClear(row)}
+              className="text-destructive hover:text-destructive"
+            >
+              Clear
+            </Button>
+          )}
           {canManageSelection && (
             <button
               type="button"
@@ -563,7 +699,7 @@ function StatTile({ label, value, tone }: { label: string; value: string; tone?:
   );
 }
 
-function ReconciliationCard({ row, outletId, brand, date, canManageSelection, canEdit, onLinkPo, onMove }: RowProps) {
+function ReconciliationCard({ row, outletId, brand, date, canManageSelection, canEdit, onLinkPo, onClear, onMove }: RowProps) {
   const editor = useRowEditor(row, outletId, date);
   const removeClassAItem = useRemoveClassAItem();
 
@@ -667,15 +803,26 @@ function ReconciliationCard({ row, outletId, brand, date, canManageSelection, ca
         </div>
 
         {canEdit && (
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={!editor.dirty || editor.saving}
-            onClick={editor.handleSave}
-            className={cn('w-full', editor.justSaved && 'border-green-500 bg-green-50 text-green-700 hover:bg-green-100')}
-          >
-            Save
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={!editor.dirty || editor.saving}
+              onClick={editor.handleSave}
+              className={cn('flex-1', editor.justSaved && 'border-green-500 bg-green-50 text-green-700 hover:bg-green-100')}
+            >
+              Save
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={!row.hasManualEntry}
+              onClick={() => onClear(row)}
+              className="text-destructive hover:text-destructive"
+            >
+              Clear
+            </Button>
+          </div>
         )}
       </CardContent>
     </Card>

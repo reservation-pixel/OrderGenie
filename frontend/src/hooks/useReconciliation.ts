@@ -40,6 +40,47 @@ export function useUpsertReconciliationEntry() {
   });
 }
 
+export function useClearReconciliationEntry() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ outletId, itemName, date }: { outletId: string; itemName: string; date: string }) =>
+      apiClient.delete('/reconciliation/entries', { params: { outletId, itemName, date } }),
+    onSuccess: () => {
+      toast.success('Cleared');
+      qc.invalidateQueries({ queryKey: ['reconciliation'] });
+    },
+    onError: () => toast.error('Failed to clear'),
+  });
+}
+
+export function useClearAllOpenings() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ outletId, brand, date }: { outletId: string; brand: string; date: string }) =>
+      (await apiClient.delete<ApiEnvelope<{ cleared: number }>>('/reconciliation/entries/openings', { params: { outletId, brand, date } }))
+        .data.data,
+    onSuccess: (result) => {
+      toast.success(`Cleared Opening for ${result.cleared} item${result.cleared === 1 ? '' : 's'}`);
+      qc.invalidateQueries({ queryKey: ['reconciliation'] });
+    },
+    onError: () => toast.error('Failed to clear openings'),
+  });
+}
+
+export function useClearAllClosings() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ outletId, brand, date }: { outletId: string; brand: string; date: string }) =>
+      (await apiClient.delete<ApiEnvelope<{ cleared: number }>>('/reconciliation/entries/closings', { params: { outletId, brand, date } }))
+        .data.data,
+    onSuccess: (result) => {
+      toast.success(`Cleared Actual Closing for ${result.cleared} item${result.cleared === 1 ? '' : 's'}`);
+      qc.invalidateQueries({ queryKey: ['reconciliation'] });
+    },
+    onError: () => toast.error('Failed to clear closings'),
+  });
+}
+
 /**
  * Saves the super admin's arranged row order for a brand. Every outlet of the brand shares it,
  * so all reconciliation queries are invalidated rather than just the one on screen.

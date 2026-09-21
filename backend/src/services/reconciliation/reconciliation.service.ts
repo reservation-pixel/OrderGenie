@@ -612,3 +612,86 @@ export async function upsertReconciliationEntry(input: UpsertReconciliationEntry
     update: updateData,
   });
 }
+
+export interface DeleteReconciliationEntryInput {
+  outletId: string;
+  itemName: string;
+  date: string;
+}
+
+export async function deleteReconciliationEntry(input: DeleteReconciliationEntryInput) {
+  const day = parseDateParam(input.date);
+  // deleteMany (not delete) so clicking Clear on an already-empty row is a harmless no-op
+  // instead of a 404 — e.g. a double-click, or the row was already cleared elsewhere.
+  await prisma.inventory.deleteMany({
+    where: { outletId: input.outletId, itemName: input.itemName, stockDate: day },
+  });
+}
+
+/** Same ingredient universe getReconciliationDashboard shows, recomputed fresh so a bulk
+ * clear only ever touches items actually tracked/visible for this brand+outlet+day. */
+async function getIngredientItemNames(outletId: string, brand: string, day: Date): Promise<string[]> {
+  const [classAEntries, categorySoldItems] = await Promise.all([
+    listClassAItems(brand),
+    getCategorySoldItems(outletId, day),
+  ]);
+  return Array.from(buildIngredientUniverse(classAEntries, categorySoldItems).keys());
+}
+
+export interface ClearAllForDayInput {
+  outletId: string;
+  brand: string;
+  date: string;
+}
+
+/**
+ * Clears every row's Opening for the day, leaving Actual Closing untouched. Only touches
+ * rows a human actually typed an Opening into (openingAutoFilled: false) — an already-correct
+ * carried-forward Opening isn't a mistake to clear, and zeroing it would just recompute back
+ * to the same value on next load. A row whose Closing is also empty is deleted outright
+ * (matching the single-row Clear's semantics); otherwise only Opening resets, handing control
+ * back to carryForwardOpenings.
+ */
+export async function clearAllOpeningsForDay(input: ClearAllForDayInput) {
+  const day = parseDateParam(input.date);
+  const itemNames = await getIngredientItemNames(input.outletId, input.brand, day);
+  if (itemNames.length === 0) return { cleared: 0 };
+
+  const rows = await prisma.inventory.findMany({
+    where: { outletId: input.outletId, stockDate: day, itemName: { in: itemNames }, openingAutoFilled: false },
+    select: { id: true, closingStock: true },
+  });
+
+  const writes = rows.map((row) =>
+    toNum(row.closingStock) === 0
+      ? prisma.inventory.delete({ where: { id: row.id } })
+      : prisma.inventory.update({ where: { id: row.id }, data: { openingStock: 0, openingAutoFilled: true } })
+  );
+  if (writes.length > 0) await prisma.$transaction(writes);
+  return { cleared: writes.length };
+}
+
+/**
+ * Clears every row's Actual Closing for the day, leaving Opening untouched. Actual Closing has
+ * no "auto" concept — it's always manual — so this targets every row with a nonzero Closing. A
+ * row whose Opening is only auto-filled (nothing manual left) is deleted outright; otherwise
+ * only Closing resets, preserving a manually-entered Opening.
+ */
+export async function clearAllClosingsForDay(input: ClearAllForDayInput) {
+  const day = parseDateParam(input.date);
+  const itemNames = await getIngredientItemNames(input.outletId, input.brand, day);
+  if (itemNames.length === 0) return { cleared: 0 };
+
+  const rows = await prisma.inventory.findMany({
+    where: { outletId: input.outletId, stockDate: day, itemName: { in: itemNames }, closingStock: { not: 0 } },
+    select: { id: true, openingAutoFilled: true },
+  });
+
+  const writes = rows.map((row) =>
+    row.openingAutoFilled
+      ? prisma.inventory.delete({ where: { id: row.id } })
+      : prisma.inventory.update({ where: { id: row.id }, data: { closingStock: 0, currentStock: 0 } })
+  );
+  if (writes.length > 0) await prisma.$transaction(writes);
+  return { cleared: writes.length };
+}
