@@ -602,7 +602,10 @@ export async function upsertReconciliationEntry(input: UpsertReconciliationEntry
       stockDate: day,
       source: DataSource.MANUAL,
       openingStock: input.opening ?? 0,
-      openingAutoFilled: false,
+      // An Opening of 0 on a brand-new row is just the untouched default (Save posts both
+      // fields). Claiming it as manual would freeze it at 0 if the previous day's closing is
+      // entered afterwards — leave it to carry-forward unless someone typed a real number.
+      openingAutoFilled: !input.opening,
       closingStock: input.actualClosing ?? 0,
       currentStock: input.actualClosing ?? 0,
     },
