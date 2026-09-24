@@ -16,6 +16,7 @@ import webhooksRoutes from './webhooks.routes';
 import reconciliationRoutes from './reconciliation.routes';
 import predictedSalesRoutes from './predictedSales.routes';
 import soldOutRoutes from './soldOut.routes';
+import activityLogRoutes from './activityLog.routes';
 
 const router = Router();
 
@@ -36,5 +37,6 @@ router.use('/webhooks', webhooksRoutes);
 router.use('/reconciliation', reconciliationRoutes);
 router.use('/predicted-sales', predictedSalesRoutes);
 router.use('/sold-out', soldOutRoutes);
+router.use('/activity-logs', activityLogRoutes);
 
 export default router;

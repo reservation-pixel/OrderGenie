@@ -15,6 +15,7 @@ const TABS = [
   { href: '/settings/notifications', label: 'Notifications' },
   { href: '/settings/api-explorer', label: 'API Explorer' },
   { href: '/settings/predictions-import', label: 'Sales Forecast' },
+  { href: '/settings/activity', label: 'Activity Log' },
 ];
 
 // VIEWER gets read-only Petpooja API + API Explorer, but no Users/Roles/Notifications/

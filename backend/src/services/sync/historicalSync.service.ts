@@ -1,6 +1,7 @@
 import { SyncStatus, TriggerType } from '@prisma/client';
 import { prisma } from '../../config/db';
 import { dateOnlyUtc } from '../../utils/dateRange';
+import { ACTIVITY_LOG_RETENTION_DAYS } from '../activityLog/activityLog.service';
 
 // Only the trailing 7 days (including today) are kept at all — Sale/PurchaseOrder
 // (and their line items, via cascade), InventoryTransaction, and the SyncLog history
@@ -36,20 +37,31 @@ export async function runDataRetentionCleanup(triggerType: TriggerType, triggere
 
     // Sale -> SaleItem and PurchaseOrder -> PurchaseOrderItem both cascade on delete
     // (schema.prisma), so pruning the parent rows is enough to clean up line items too.
-    const [prunedSales, prunedPurchaseOrders, prunedInventoryTransactions, prunedSyncLogs] = await Promise.all([
-      prisma.sale.deleteMany({ where: { orderDate: { lt: cutoff } } }),
-      prisma.purchaseOrder.deleteMany({ where: { orderDate: { lt: cutoff } } }),
-      prisma.inventoryTransaction.deleteMany({ where: { transactionDate: { lt: cutoff } } }),
-      // This run's own log row was created moments ago, so it sits inside the window
-      // and can't be deleted by its own sweep.
-      prisma.syncLog.deleteMany({ where: { createdAt: { lt: cutoff } } }),
-    ]);
+    const [prunedSales, prunedPurchaseOrders, prunedInventoryTransactions, prunedSyncLogs, prunedActivityLogs] =
+      await Promise.all([
+        prisma.sale.deleteMany({ where: { orderDate: { lt: cutoff } } }),
+        prisma.purchaseOrder.deleteMany({ where: { orderDate: { lt: cutoff } } }),
+        prisma.inventoryTransaction.deleteMany({ where: { transactionDate: { lt: cutoff } } }),
+        // This run's own log row was created moments ago, so it sits inside the window
+        // and can't be deleted by its own sweep.
+        prisma.syncLog.deleteMany({ where: { createdAt: { lt: cutoff } } }),
+        // The audit trail keeps its own, much longer window: it's one small row per edit,
+        // and "who changed this" is a question asked weeks later, not within 7 days.
+        prisma.activityLog.deleteMany({
+          where: {
+            createdAt: {
+              lt: dateOnlyUtc(now.getFullYear(), now.getMonth(), now.getDate() - (ACTIVITY_LOG_RETENTION_DAYS - 1)),
+            },
+          },
+        }),
+      ]);
 
     const result = {
       prunedSales: prunedSales.count,
       prunedPurchaseOrders: prunedPurchaseOrders.count,
       prunedInventoryTransactions: prunedInventoryTransactions.count,
       prunedSyncLogs: prunedSyncLogs.count,
+      prunedActivityLogs: prunedActivityLogs.count,
     };
 
     await prisma.syncLog.update({

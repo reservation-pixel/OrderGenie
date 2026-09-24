@@ -572,7 +572,7 @@ export async function upsertReconciliationEntry(input: UpsertReconciliationEntry
   const day = parseDateParam(input.date);
   const existing = await prisma.inventory.findUnique({
     where: { outletId_itemName_stockDate: { outletId: input.outletId, itemName: input.itemName, stockDate: day } },
-    select: { openingStock: true },
+    select: { openingStock: true, closingStock: true },
   });
 
   const updateData: Prisma.InventoryUpdateInput = { source: DataSource.MANUAL };
@@ -592,7 +592,7 @@ export async function upsertReconciliationEntry(input: UpsertReconciliationEntry
   if (input.unit !== undefined) updateData.unit = input.unit;
   if (input.category !== undefined) updateData.category = input.category;
 
-  return prisma.inventory.upsert({
+  const row = await prisma.inventory.upsert({
     where: { outletId_itemName_stockDate: { outletId: input.outletId, itemName: input.itemName, stockDate: day } },
     create: {
       outletId: input.outletId,
@@ -611,6 +611,20 @@ export async function upsertReconciliationEntry(input: UpsertReconciliationEntry
     },
     update: updateData,
   });
+
+  // The activity log wants before/after, and only this function still holds "before".
+  // Save posts both fields every time, so unchanged ones are dropped rather than logged.
+  const changes: Record<string, { from: number | null; to: number }> = {};
+  if (input.opening !== undefined) {
+    const from = existing ? toNum(existing.openingStock) : null;
+    if (from !== input.opening) changes.opening = { from, to: input.opening };
+  }
+  if (input.actualClosing !== undefined) {
+    const from = existing ? toNum(existing.closingStock) : null;
+    if (from !== input.actualClosing) changes.actualClosing = { from, to: input.actualClosing };
+  }
+
+  return { row, day, changes };
 }
 
 /** Same ingredient universe getReconciliationDashboard shows, recomputed fresh so a bulk

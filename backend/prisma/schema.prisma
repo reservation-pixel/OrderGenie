@@ -125,7 +125,7 @@ model User {
   brand        String?
   // Pages this user may reach beyond what their role allows. Additive only — today the sole
   // grantable value is 'sales-forecast', an array so a second page needs no migration.
-  pageGrants   String[] @default([])
+  pageGrants   String[]  @default([])
   isActive     Boolean   @default(true)
   lastLoginAt  DateTime?
   createdAt    DateTime  @default(now())
@@ -139,29 +139,29 @@ model User {
 }
 
 model Outlet {
-  id                 String     @id @default(cuid())
-  name               String
-  brand              String
-  rid                String     @unique
-  outletType         OutletType @default(OUTLET)
-  city               String?
-  address            String?
-  isActive           Boolean    @default(true)
-  salesSyncCode      String?
-  inventorySyncCode  String?
-  lowStockAlertEnabled Boolean  @default(true)
-  createdAt          DateTime   @default(now())
-  updatedAt          DateTime   @updatedAt
+  id                   String     @id @default(cuid())
+  name                 String
+  brand                String
+  rid                  String     @unique
+  outletType           OutletType @default(OUTLET)
+  city                 String?
+  address              String?
+  isActive             Boolean    @default(true)
+  salesSyncCode        String?
+  inventorySyncCode    String?
+  lowStockAlertEnabled Boolean    @default(true)
+  createdAt            DateTime   @default(now())
+  updatedAt            DateTime   @updatedAt
 
-  users                 User[]
-  sales                 Sale[]
-  inventory             Inventory[]
-  inventoryTransactions InventoryTransaction[]
-  purchaseOrders        PurchaseOrder[]
-  syncLogs              SyncLog[]
-  wastageEntries        WastageEntry[]
-  predictedSales        PredictedSale[]
-  soldOutEntries        SoldOutEntry[]
+  users                    User[]
+  sales                    Sale[]
+  inventory                Inventory[]
+  inventoryTransactions    InventoryTransaction[]
+  purchaseOrders           PurchaseOrder[]
+  syncLogs                 SyncLog[]
+  wastageEntries           WastageEntry[]
+  predictedSales           PredictedSale[]
+  soldOutEntries           SoldOutEntry[]
   purchaseOrderWebhookLogs PurchaseOrderWebhookLog[]
 }
 
@@ -193,17 +193,17 @@ model Sale {
 }
 
 model SaleItem {
-  id         String   @id @default(cuid())
-  saleId     String
-  sale       Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
-  itemName   String
-  category   String?
-  quantity   Decimal  @db.Decimal(10, 2)
-  price      Decimal  @db.Decimal(12, 2)
-  discount   Decimal  @default(0) @db.Decimal(12, 2)
-  tax        Decimal  @default(0) @db.Decimal(12, 2)
-  total      Decimal  @db.Decimal(12, 2)
-  createdAt  DateTime @default(now())
+  id        String   @id @default(cuid())
+  saleId    String
+  sale      Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  itemName  String
+  category  String?
+  quantity  Decimal  @db.Decimal(10, 2)
+  price     Decimal  @db.Decimal(12, 2)
+  discount  Decimal  @default(0) @db.Decimal(12, 2)
+  tax       Decimal  @default(0) @db.Decimal(12, 2)
+  total     Decimal  @db.Decimal(12, 2)
+  createdAt DateTime @default(now())
 
   @@index([itemName])
   @@index([category])
@@ -240,12 +240,12 @@ model Inventory {
 }
 
 model InventoryTransaction {
-  id                  String                    @id @default(cuid())
+  id                  String                   @id @default(cuid())
   outletId            String
-  outlet              Outlet                    @relation(fields: [outletId], references: [id])
+  outlet              Outlet                   @relation(fields: [outletId], references: [id])
   itemName            String
   transactionType     InventoryTransactionType
-  quantity            Decimal                   @db.Decimal(12, 2)
+  quantity            Decimal                  @db.Decimal(12, 2)
   unit                String?
   referenceType       String?
   referenceId         String?
@@ -253,23 +253,23 @@ model InventoryTransaction {
   destinationOutletId String?
   transactionDate     DateTime
   rawPayload          Json?
-  source              DataSource                @default(STUB)
-  createdAt           DateTime                  @default(now())
+  source              DataSource               @default(STUB)
+  createdAt           DateTime                 @default(now())
 
   @@index([outletId, transactionDate])
   @@index([itemName])
 }
 
 model Vendor {
-  id                String   @id @default(cuid())
-  name              String
-  petpoojaSupplierId String? @unique
-  contactPerson     String?
-  phone             String?
-  email             String?
-  address           String?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  id                 String   @id @default(cuid())
+  name               String
+  petpoojaSupplierId String?  @unique
+  contactPerson      String?
+  phone              String?
+  email              String?
+  address            String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   purchaseOrders PurchaseOrder[]
 }
@@ -367,37 +367,37 @@ model SyncLog {
 }
 
 model PetpoojaApiConfig {
-  id                    String    @id @default(cuid())
-  apiType               ApiType   @unique
-  appKeyEncrypted       String?
-  appSecretEncrypted    String?
-  accessTokenEncrypted  String?
-  cookieEncrypted       String?
-  isConfigured          Boolean   @default(false)
-  lastVerifiedAt        DateTime?
-  notes                 String?
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
+  id                   String    @id @default(cuid())
+  apiType              ApiType   @unique
+  appKeyEncrypted      String?
+  appSecretEncrypted   String?
+  accessTokenEncrypted String?
+  cookieEncrypted      String?
+  isConfigured         Boolean   @default(false)
+  lastVerifiedAt       DateTime?
+  notes                String?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 }
 
 model SyncSchedule {
-  id              String   @id @default(cuid())
-  syncType        SyncType @unique
-  cronExpression  String
-  isEnabled       Boolean  @default(true)
-  lastRunAt       DateTime?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id             String    @id @default(cuid())
+  syncType       SyncType  @unique
+  cronExpression String
+  isEnabled      Boolean   @default(true)
+  lastRunAt      DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 }
 
 model NotificationSetting {
-  id                  String   @id @default(cuid())
-  userId              String   @unique
-  user                User     @relation(fields: [userId], references: [id])
-  lowStockAlerts      Boolean  @default(true)
-  syncFailureAlerts   Boolean  @default(true)
-  dailySummaryEmail   Boolean  @default(false)
-  updatedAt           DateTime @updatedAt
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  user              User     @relation(fields: [userId], references: [id])
+  lowStockAlerts    Boolean  @default(true)
+  syncFailureAlerts Boolean  @default(true)
+  dailySummaryEmail Boolean  @default(false)
+  updatedAt         DateTime @updatedAt
 }
 
 model ClassAItem {
@@ -465,19 +465,19 @@ model PredictedSale {
 // the "Recent Imports" UI can reuse the same status-badge convention as "Recent Sync
 // Runs" rather than inventing a parallel one.
 model PredictionImportLog {
-  id                String          @id @default(cuid())
+  id                String     @id @default(cuid())
   fileName          String
   status            SyncStatus
-  startedAt         DateTime        @default(now())
+  startedAt         DateTime   @default(now())
   completedAt       DateTime?
-  rowsCreated       Int             @default(0)
-  rowsUpdated       Int             @default(0)
-  sheetsProcessed   Int             @default(0)
+  rowsCreated       Int        @default(0)
+  rowsUpdated       Int        @default(0)
+  sheetsProcessed   Int        @default(0)
   sheetsSkipped     Json?
   errorMessage      String?
   triggeredByUserId String?
-  triggeredByUser   User?           @relation(fields: [triggeredByUserId], references: [id])
-  createdAt         DateTime        @default(now())
+  triggeredByUser   User?      @relation(fields: [triggeredByUserId], references: [id])
+  createdAt         DateTime   @default(now())
 
   predictedSales PredictedSale[]
 }
@@ -534,4 +534,47 @@ model ReconciliationRecipe {
   updatedAt      DateTime          @updatedAt
 
   @@index([brand, ingredientName])
+}
+
+/**
+ * Who changed what, and when. Written by the activity middleware for every successful
+ * mutating API call, so a newly added endpoint is covered without being wired up
+ * individually. Identity is denormalised (userEmail, userRole) so a log still reads
+ * correctly after the user is renamed or deleted.
+ * Visible to SUPER_ADMIN only — it carries request payloads from every part of the app.
+ */
+model ActivityLog {
+  id         String    @id @default(cuid())
+  createdAt  DateTime  @default(now())
+  userId     String?
+  userEmail  String
+  userRole   RoleName?
+  /**
+   * Stable machine key, e.g. "reconciliation.entry.save".
+   */
+  action     String
+  /**
+   * What to show in the log: "Saved reconciliation entry".
+   */
+  label      String
+  method     String
+  path       String
+  outletId   String?
+  brand      String?
+  itemName   String?
+  stockDate  DateTime? @db.Date
+  /**
+   * { field: { from, to } } for the handlers that report before/after values.
+   */
+  changes    Json?
+  /**
+   * Request body/query with credentials stripped.
+   */
+  payload    Json?
+  statusCode Int
+
+  @@index([createdAt])
+  @@index([action, createdAt])
+  @@index([userId, createdAt])
+  @@index([outletId, createdAt])
 }

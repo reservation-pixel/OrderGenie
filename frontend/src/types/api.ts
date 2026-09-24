@@ -466,3 +466,28 @@ export interface ExplorerResult {
   perOutlet: ExplorerOutletResult[];
   records: ExplorerOrderRecord[] | ExplorerPurchaseRecord[] | ExplorerTransferRecord[];
 }
+
+export interface ActivityLogRow {
+  id: string;
+  createdAt: string;
+  userEmail: string;
+  userRole: Role | null;
+  action: string;
+  label: string;
+  method: string;
+  path: string;
+  outletId: string | null;
+  outletName: string | null;
+  brand: string | null;
+  itemName: string | null;
+  stockDate: string | null;
+  /** { field: { from, to } } — present for handlers that report before/after values. */
+  changes: Record<string, { from: number | null; to: number }> | null;
+  payload: Record<string, unknown> | null;
+  statusCode: number;
+}
+
+export interface ActivityLogFilters {
+  actions: { action: string; label: string }[];
+  users: { id: string; email: string }[];
+}

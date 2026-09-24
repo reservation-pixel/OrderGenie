@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import { env } from './config/env';
 import apiRoutes from './routes';
+import { activityLogger } from './middleware/activityLog.middleware';
 
 export const app = express();
 
@@ -11,4 +12,5 @@ app.use(express.json());
 
 app.get('/health', (_req, res) => res.json({ status: 'ok' }));
 
-app.use('/api', apiRoutes);
+// In front of the whole API so every mutating endpoint is audited, including future ones.
+app.use('/api', activityLogger, apiRoutes);

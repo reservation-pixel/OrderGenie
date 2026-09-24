@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 import { z } from 'zod';
 import { asyncHandler } from '../utils/asyncHandler';
+import { setActivityDetail } from '../middleware/activityLog.middleware';
 import { ok, created } from '../utils/apiResponse';
 import {
   getReconciliationDashboard,
@@ -27,7 +28,9 @@ const upsertSchema = z.object({
 
 export const upsertReconciliationEntryHandler = asyncHandler(async (req: Request, res: Response) => {
   const input = upsertSchema.parse(req.body);
-  const row = await upsertReconciliationEntry(input);
+  const { row, day, changes } = await upsertReconciliationEntry(input);
+  // Only this handler knows what the numbers were before the save.
+  setActivityDetail(res, { itemName: input.itemName, outletId: input.outletId, stockDate: day, changes });
   return created(res, row);
 });
 
