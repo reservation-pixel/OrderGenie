@@ -75,6 +75,8 @@ export async function recordActivity(input: RecordActivityInput): Promise<void> 
 
 export interface ActivityLogQuery {
   action?: string;
+  /** Groups a whole area of the app, e.g. "reconciliation." for every reconciliation action. */
+  actionPrefix?: string;
   userId?: string;
   outletId?: string;
   brand?: string;
@@ -93,6 +95,7 @@ export async function listActivityLogs(query: ActivityLogQuery) {
   const where: Prisma.ActivityLogWhereInput = {
     createdAt: { gte: from, lte: to },
     ...(query.action ? { action: query.action } : {}),
+    ...(query.actionPrefix && !query.action ? { action: { startsWith: query.actionPrefix } } : {}),
     ...(query.userId ? { userId: query.userId } : {}),
     ...(query.outletId ? { outletId: query.outletId } : {}),
     ...(query.brand ? { brand: query.brand } : {}),
@@ -103,6 +106,7 @@ export async function listActivityLogs(query: ActivityLogQuery) {
             { label: { contains: query.search, mode: 'insensitive' as const } },
             { itemName: { contains: query.search, mode: 'insensitive' as const } },
             { path: { contains: query.search, mode: 'insensitive' as const } },
+            { brand: { contains: query.search, mode: 'insensitive' as const } },
           ],
         }
       : {}),

@@ -52,6 +52,22 @@ function str(value: unknown): string | null {
 }
 
 /**
+ * The calendar day an action applies to, taken from whichever field carries it. Day-scoped
+ * endpoints all name it something slightly different, and lifting it here means a log row shows
+ * "for 18 Sep" without every handler having to report it.
+ */
+function dayFrom(...sources: Record<string, unknown>[]): Date | null {
+  for (const source of sources) {
+    for (const key of ['stockDate', 'date', 'wastageDate']) {
+      const value = str(source?.[key]);
+      const match = value && /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
+      if (match) return new Date(`${match[1]}-${match[2]}-${match[3]}T00:00:00.000Z`);
+    }
+  }
+  return null;
+}
+
+/**
  * Records every successful mutating API call. Mounted once in front of the whole API rather
  * than per route, so coverage doesn't depend on each new endpoint remembering to opt in.
  *
@@ -84,8 +100,13 @@ export function activityLogger(req: Request, res: Response, next: NextFunction) 
       path,
       outletId: detail.outletId ?? str((body as Record<string, unknown>)?.outletId) ?? str(query.outletId),
       brand: detail.brand ?? str((body as Record<string, unknown>)?.brand) ?? str(query.brand),
-      itemName: detail.itemName ?? str((body as Record<string, unknown>)?.itemName),
-      stockDate: detail.stockDate ?? null,
+      // Class A adds name the item in `value` rather than `itemName`.
+      itemName:
+        detail.itemName ??
+        str((body as Record<string, unknown>)?.itemName) ??
+        str((body as Record<string, unknown>)?.value),
+      stockDate:
+        detail.stockDate ?? dayFrom((body ?? {}) as Record<string, unknown>, query as Record<string, unknown>),
       changes: detail.changes ?? null,
       payload: payloadSource,
       statusCode: res.statusCode,

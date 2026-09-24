@@ -6,16 +6,18 @@ export interface ActivityLogQueryOptions {
   from: string;
   to: string;
   action?: string;
+  /** One area of the app, e.g. 'reconciliation.' — ignored when a specific action is chosen. */
+  actionPrefix?: string;
   userId?: string;
   outletId?: string;
   search?: string;
 }
 
 export function useActivityLogs(page: number, pageSize: number, options: ActivityLogQueryOptions) {
-  const { from, to, action, userId, outletId, search } = options;
+  const { from, to, action, actionPrefix, userId, outletId, search } = options;
 
   return useQuery({
-    queryKey: ['activity-logs', page, pageSize, from, to, action, userId, outletId, search],
+    queryKey: ['activity-logs', page, pageSize, from, to, action, actionPrefix, userId, outletId, search],
     queryFn: async () => {
       const res = await apiClient.get<ApiEnvelope<ActivityLogRow[]>>('/activity-logs', {
         params: {
@@ -24,6 +26,7 @@ export function useActivityLogs(page: number, pageSize: number, options: Activit
           from,
           to,
           ...(action && action !== 'all' ? { action } : {}),
+          ...(actionPrefix ? { actionPrefix } : {}),
           ...(userId && userId !== 'all' ? { userId } : {}),
           ...(outletId && outletId !== 'all' ? { outletId } : {}),
           ...(search ? { search } : {}),

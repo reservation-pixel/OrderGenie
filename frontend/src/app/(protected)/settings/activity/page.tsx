@@ -30,6 +30,20 @@ const FIELD_LABELS: Record<string, string> = {
   actualClosing: 'Actual Closing',
 };
 
+// Action keys are namespaced by area ("reconciliation.entry.save"), so one prefix filters a
+// whole part of the app — including actions added later, which a fixed list would miss.
+const AREAS = [
+  { value: 'all', label: 'All activity', prefix: '' },
+  { value: 'reconciliation', label: 'Reconciliation', prefix: 'reconciliation.' },
+  { value: 'class-a-items', label: 'Class A Items', prefix: 'class-a-items.' },
+  { value: 'sold-out', label: 'Sold Out', prefix: 'sold-out.' },
+  { value: 'wastage', label: 'Wastage', prefix: 'wastage.' },
+  { value: 'predictions', label: 'Forecasts', prefix: 'predictions.' },
+  { value: 'sync', label: 'Sync', prefix: 'sync.' },
+  { value: 'settings', label: 'Settings & Users', prefix: 'settings.' },
+  { value: 'auth', label: 'Sign-ins', prefix: 'auth.' },
+];
+
 function formatValue(value: unknown): string {
   if (value === null || value === undefined) return 'not set';
   return String(value);
@@ -38,6 +52,7 @@ function formatValue(value: unknown): string {
 export default function ActivityLogPage() {
   const [from, setFrom] = useState(isoDaysAgo(6));
   const [to, setTo] = useState(isoDaysAgo(0));
+  const [area, setArea] = useState('all');
   const [action, setAction] = useState('all');
   const [userId, setUserId] = useState('all');
   const [outletId, setOutletId] = useState('all');
@@ -46,8 +61,17 @@ export default function ActivityLogPage() {
 
   // Any filter change puts the view back on page 1 — page 4 of the old result set is
   // meaningless against the new one.
-  const [page, setPage] = useResettingPage(`${from}|${to}|${action}|${userId}|${outletId}|${search}`);
-  const { data, isLoading, isError } = useActivityLogs(page, PAGE_SIZE, { from, to, action, userId, outletId, search });
+  const actionPrefix = AREAS.find((a) => a.value === area)?.prefix ?? '';
+  const [page, setPage] = useResettingPage(`${from}|${to}|${area}|${action}|${userId}|${outletId}|${search}`);
+  const { data, isLoading, isError } = useActivityLogs(page, PAGE_SIZE, {
+    from,
+    to,
+    action,
+    actionPrefix,
+    userId,
+    outletId,
+    search,
+  });
   const { data: filters } = useActivityLogFilters();
   const { data: outlets } = useOutlets();
 
@@ -70,6 +94,29 @@ export default function ActivityLogPage() {
             <div className="space-y-1">
               <Label htmlFor="activity-to">To</Label>
               <Input id="activity-to" type="date" value={to} onChange={(e) => setTo(e.target.value)} className="w-[150px]" />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="activity-area">Area</Label>
+              <Select
+                value={area}
+                onValueChange={(v) => {
+                  setArea(v ?? 'all');
+                  // A specific action from another area would win over the prefix and show
+                  // nothing that matches the new choice, so reset it.
+                  setAction('all');
+                }}
+              >
+                <SelectTrigger id="activity-area" className="w-[180px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {AREAS.map((a) => (
+                    <SelectItem key={a.value} value={a.value}>
+                      {a.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-1">
               <Label htmlFor="activity-user">User</Label>
@@ -151,7 +198,9 @@ export default function ActivityLogPage() {
                       <TableHead>When</TableHead>
                       <TableHead>Who</TableHead>
                       <TableHead>Action</TableHead>
-                      <TableHead>Where</TableHead>
+                      <TableHead>Outlet</TableHead>
+                      <TableHead>Item</TableHead>
+                      <TableHead>For date</TableHead>
                       <TableHead>Change</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -174,9 +223,6 @@ export default function ActivityLogPage() {
 function ActivityRow({ row }: { row: ActivityLogRow }) {
   const [open, setOpen] = useState(false);
   const changeEntries = Object.entries(row.changes ?? {});
-  const where = [row.outletName ?? row.brand, row.itemName, row.stockDate ? formatDate(row.stockDate) : null]
-    .filter(Boolean)
-    .join(' · ');
 
   return (
     <>
@@ -195,7 +241,15 @@ function ActivityRow({ row }: { row: ActivityLogRow }) {
           {row.userRole && <div className="text-xs text-muted-foreground">{row.userRole}</div>}
         </TableCell>
         <TableCell className="text-sm">{row.label}</TableCell>
-        <TableCell className="text-sm text-muted-foreground">{where || '—'}</TableCell>
+        <TableCell className="text-sm">
+          {/* A brand-wide action (reordering rows, adding a Class A item) names the brand
+              instead — it isn't tied to one outlet. */}
+          {row.outletName ?? (row.brand ? <span className="text-muted-foreground">{row.brand} (all)</span> : '—')}
+        </TableCell>
+        <TableCell className="text-sm">{row.itemName ?? '—'}</TableCell>
+        <TableCell className="whitespace-nowrap text-sm">
+          {row.stockDate ? formatDate(row.stockDate) : <span className="text-muted-foreground">—</span>}
+        </TableCell>
         <TableCell className="text-sm">
           {changeEntries.length === 0 ? (
             <span className="text-muted-foreground">—</span>
@@ -212,7 +266,7 @@ function ActivityRow({ row }: { row: ActivityLogRow }) {
       </TableRow>
       {open && (
         <TableRow>
-          <TableCell colSpan={6} className="bg-muted/40">
+          <TableCell colSpan={8} className="bg-muted/40">
             <div className="space-y-1 text-xs">
               <p className="font-medium">
                 {row.method} {row.path} · {row.statusCode}

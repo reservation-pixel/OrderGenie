@@ -34,6 +34,10 @@ export const upsertReconciliationEntryHandler = asyncHandler(async (req: Request
   return created(res, row);
 });
 
+function itemCount(n: number): string {
+  return `${n} ${n === 1 ? 'item' : 'items'}`;
+}
+
 const clearDaySchema = z.object({
   outletId: z.string().min(1),
   brand: z.string().min(1),
@@ -42,12 +46,17 @@ const clearDaySchema = z.object({
 
 export const clearAllOpeningsHandler = asyncHandler(async (req: Request, res: Response) => {
   const input = clearDaySchema.parse(req.query);
-  return ok(res, await clearAllOpeningsForDay(input));
+  const result = await clearAllOpeningsForDay(input);
+  // How many rows a bulk clear actually took with it is the part worth auditing.
+  setActivityDetail(res, { label: `Cleared all openings · ${itemCount(result.cleared)}` });
+  return ok(res, result);
 });
 
 export const clearAllClosingsHandler = asyncHandler(async (req: Request, res: Response) => {
   const input = clearDaySchema.parse(req.query);
-  return ok(res, await clearAllClosingsForDay(input));
+  const result = await clearAllClosingsForDay(input);
+  setActivityDetail(res, { label: `Cleared all closings · ${itemCount(result.cleared)}` });
+  return ok(res, result);
 });
 
 const orderSchema = z.object({
