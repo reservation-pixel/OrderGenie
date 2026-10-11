@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Sidebar } from './Sidebar';
+import { AlertsBell } from './AlertsBell';
 import { useAuthStore } from '@/store/authStore';
 
 export function Header() {
@@ -37,6 +38,9 @@ export function Header() {
         {(user?.role === 'OUTLET_MANAGER' || user?.role === 'HEAD_CHEF') && (
           <span className="text-sm text-muted-foreground">{user.outletName}</span>
         )}
+
+        {/* Renders nothing for roles other than SUPER_ADMIN. */}
+        <AlertsBell />
 
         <div className="flex items-center gap-2">
           <Avatar className="h-8 w-8">

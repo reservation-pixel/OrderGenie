@@ -491,3 +491,14 @@ export interface ActivityLogFilters {
   actions: { action: string; label: string }[];
   users: { id: string; email: string }[];
 }
+
+export interface MissingClosingRow {
+  outletId: string;
+  outletName: string;
+  brand: string;
+  /** YYYY-MM-DD — the day whose Actual Closing is incomplete. */
+  date: string;
+  expected: number;
+  filled: number;
+  missing: number;
+}
