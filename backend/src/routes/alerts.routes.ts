@@ -2,14 +2,20 @@ import { Router } from 'express';
 import { RoleName } from '@prisma/client';
 import { verifyJwt } from '../middleware/auth.middleware';
 import { requireRole } from '../middleware/rbac.middleware';
-import { missingClosingsHandler } from '../controllers/alerts.controller';
+import { missingClosingsHandler, myMissingClosingsHandler } from '../controllers/alerts.controller';
 
 const router = Router();
 
-// Spans every outlet of every brand, so it stays with SUPER_ADMIN — deliberately not scoped
-// down for outlet or brand users, who already see their own gaps on their own page.
-router.use(verifyJwt, requireRole(RoleName.SUPER_ADMIN));
+router.use(verifyJwt);
 
-router.get('/missing-closings', missingClosingsHandler);
+// Spans every outlet of every brand, so it stays with SUPER_ADMIN.
+router.get('/missing-closings', requireRole(RoleName.SUPER_ADMIN), missingClosingsHandler);
+
+// The outlet-scoped twin, for the staff who can actually enter the figures.
+router.get(
+  '/my-missing-closings',
+  requireRole(RoleName.HEAD_CHEF, RoleName.OUTLET_MANAGER),
+  myMissingClosingsHandler
+);
 
 export default router;

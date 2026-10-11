@@ -22,3 +22,20 @@ export function useMissingClosings() {
     refetchOnWindowFocus: true,
   });
 }
+
+/**
+ * The signed-in user's own outlet, for the login-time reminder. Asked once when the app loads —
+ * a warning shown at sign-in has nothing to gain from polling — and only for the two roles the
+ * endpoint accepts.
+ */
+export function useMyMissingClosings() {
+  const role = useAuthStore((s) => s.user)?.role;
+
+  return useQuery({
+    queryKey: ['alerts', 'my-missing-closings'],
+    queryFn: async () =>
+      (await apiClient.get<ApiEnvelope<MissingClosingRow[]>>('/alerts/my-missing-closings')).data.data,
+    enabled: role === 'HEAD_CHEF' || role === 'OUTLET_MANAGER',
+    staleTime: 5 * 60_000,
+  });
+}

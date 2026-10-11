@@ -58,7 +58,8 @@ function dayKey(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
 
-let cache: { at: number; rows: MissingClosingRow[] } | null = null;
+// Keyed by scope so one outlet's answer can never be served as the all-outlets answer.
+const cache = new Map<string, { at: number; rows: MissingClosingRow[] }>();
 
 /**
  * Outlets that haven't finished entering Actual Closing, one row per outlet-day.
@@ -66,9 +67,16 @@ let cache: { at: number; rows: MissingClosingRow[] } | null = null;
  * An outlet is behind when *any* tracked item has no closing — the row carries filled/expected so
  * a half-finished count reads differently from an untouched one. Nothing is stored: the answer is
  * recomputed, so it corrects itself the moment the figures go in.
+ *
+ * `outletIds` narrows the sweep to one outlet's own staff; omitted, it covers every outlet.
  */
-export async function getMissingClosings(now: Date = new Date()): Promise<MissingClosingRow[]> {
-  if (cache && Date.now() - cache.at < CACHE_TTL_MS) return cache.rows;
+export async function getMissingClosings(now: Date = new Date(), outletIds?: string[]): Promise<MissingClosingRow[]> {
+  // An explicit empty list means "this user has no outlet", which is not the same as "all outlets".
+  if (outletIds && outletIds.length === 0) return [];
+
+  const cacheKey = outletIds ? [...outletIds].sort().join(',') : 'all';
+  const cached = cache.get(cacheKey);
+  if (cached && Date.now() - cached.at < CACHE_TTL_MS) return cached.rows;
 
   const days = reminderDays(now);
   if (days.length === 0) return [];
@@ -84,7 +92,7 @@ export async function getMissingClosings(now: Date = new Date()): Promise<Missin
   if (brands.length === 0) return [];
 
   const outlets = await prisma.outlet.findMany({
-    where: { isActive: true, brand: { in: brands } },
+    where: { isActive: true, brand: { in: brands }, ...(outletIds ? { id: { in: outletIds } } : {}) },
     select: { id: true, name: true, brand: true },
     orderBy: { name: 'asc' },
   });
@@ -133,11 +141,11 @@ export async function getMissingClosings(now: Date = new Date()): Promise<Missin
   // Newest day first, then by outlet, so this morning's misses lead.
   rows.sort((a, b) => b.date.localeCompare(a.date) || a.outletName.localeCompare(b.outletName));
 
-  cache = { at: Date.now(), rows };
+  cache.set(cacheKey, { at: Date.now(), rows });
   return rows;
 }
 
 /** Lets a save clear the alert immediately rather than up to a minute later. */
 export function clearMissingClosingsCache(): void {
-  cache = null;
+  cache.clear();
 }

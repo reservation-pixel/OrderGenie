@@ -2,6 +2,7 @@
 
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
+import { ClosingReminderOverlay } from './ClosingReminderOverlay';
 import { useSidebarStore } from '@/store/sidebarStore';
 import { cn } from '@/lib/utils';
 
@@ -23,6 +24,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <Header />
         <main className="flex-1 overflow-y-auto bg-muted/20 p-4 md:p-6">{children}</main>
       </div>
+      {/* Covers whichever page outlet staff land on; renders nothing for other roles. */}
+      <ClosingReminderOverlay />
     </div>
   );
 }
