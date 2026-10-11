@@ -4,6 +4,7 @@ import { dateOnlyUtc } from '../../utils/dateRange';
 import { parsePagination, toSkipTake, paginationMeta } from '../../utils/pagination';
 import { AppError } from '../../utils/apiResponse';
 import { listClassAItems, listPurchaseAliases } from '../classAItems/classAItems.service';
+import { clearMissingClosingsCache } from '../alerts/missingClosings.service';
 
 // Fallback used for "predicted sales" when no imported forecast (PredictedSale,
 // see scripts/import-predicted-sales.ts) covers this item+day — a plain trailing
@@ -592,6 +593,10 @@ export async function upsertReconciliationEntry(input: UpsertReconciliationEntry
   if (input.unit !== undefined) updateData.unit = input.unit;
   if (input.category !== undefined) updateData.category = input.category;
 
+  // The missing-closings bell caches its sweep; a save that fills a gap should clear the alert
+  // now, not when that cache expires.
+  clearMissingClosingsCache();
+
   const row = await prisma.inventory.upsert({
     where: { outletId_itemName_stockDate: { outletId: input.outletId, itemName: input.itemName, stockDate: day } },
     create: {
@@ -628,8 +633,9 @@ export async function upsertReconciliationEntry(input: UpsertReconciliationEntry
 }
 
 /** Same ingredient universe getReconciliationDashboard shows, recomputed fresh so a bulk
- * clear only ever touches items actually tracked/visible for this brand+outlet+day. */
-async function getIngredientItemNames(outletId: string, brand: string, day: Date): Promise<string[]> {
+ * clear only ever touches items actually tracked/visible for this brand+outlet+day. Exported so
+ * the missing-closings alert asks the same question the grid answers. */
+export async function getIngredientItemNames(outletId: string, brand: string, day: Date): Promise<string[]> {
   const [classAEntries, categorySoldItems] = await Promise.all([
     listClassAItems(brand),
     getCategorySoldItems(outletId, day),
