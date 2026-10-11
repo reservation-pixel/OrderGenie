@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Skeleton } from '@/components/ui/skeleton';
 import { useItemDetail } from '@/hooks/useItemDetail';
 import { formatCurrency, formatDate, formatCurrencyTooltip, formatDateTooltip } from '@/lib/format';
+import { axisProps, tooltipProps } from '@/components/dashboard/chart-theme';
 
 export function ItemDetailDialog({ itemName, onClose }: { itemName: string | null; onClose: () => void }) {
   const { data, isLoading } = useItemDetail(itemName);
@@ -30,10 +31,10 @@ export function ItemDetailDialog({ itemName, onClose }: { itemName: string | nul
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={data.dailyTrend}>
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                    <XAxis dataKey="date" tickFormatter={(v) => formatDate(v)} fontSize={11} />
-                    <YAxis tickFormatter={(v) => formatCurrency(v)} fontSize={11} width={70} />
-                    <Tooltip formatter={formatCurrencyTooltip} labelFormatter={formatDateTooltip} />
-                    <Line type="monotone" dataKey="amount" stroke="#2563eb" strokeWidth={2} dot={false} />
+                    <XAxis dataKey="date" tickFormatter={(v) => formatDate(v)} fontSize={11} {...axisProps} />
+                    <YAxis tickFormatter={(v) => formatCurrency(v)} fontSize={11} width={70} {...axisProps} />
+                    <Tooltip formatter={formatCurrencyTooltip} labelFormatter={formatDateTooltip} {...tooltipProps} />
+                    <Line type="monotone" dataKey="amount" stroke="var(--color-chart-1)" strokeWidth={2} dot={false} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
@@ -45,10 +46,10 @@ export function ItemDetailDialog({ itemName, onClose }: { itemName: string | nul
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={data.peakHours.map((h) => ({ ...h, label: `${h.hour}:00` }))}>
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                    <XAxis dataKey="label" fontSize={10} interval={2} />
-                    <YAxis fontSize={11} width={40} />
-                    <Tooltip />
-                    <Bar dataKey="quantity" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                    <XAxis dataKey="label" fontSize={10} interval={2} {...axisProps} />
+                    <YAxis fontSize={11} width={40} {...axisProps} />
+                    <Tooltip {...tooltipProps} />
+                    <Bar dataKey="quantity" fill="var(--color-chart-3)" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>

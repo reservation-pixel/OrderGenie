@@ -6,6 +6,7 @@ import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/s
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Sidebar } from './Sidebar';
 import { AlertsBell } from './AlertsBell';
+import { ThemeToggle } from './ThemeToggle';
 import { useAuthStore } from '@/store/authStore';
 
 export function Header() {
@@ -38,6 +39,8 @@ export function Header() {
         {(user?.role === 'OUTLET_MANAGER' || user?.role === 'HEAD_CHEF') && (
           <span className="text-sm text-muted-foreground">{user.outletName}</span>
         )}
+
+        <ThemeToggle />
 
         {/* Renders nothing for roles other than SUPER_ADMIN. */}
         <AlertsBell />

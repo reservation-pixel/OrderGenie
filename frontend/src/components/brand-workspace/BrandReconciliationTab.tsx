@@ -608,7 +608,7 @@ function ReconciliationTableRow({ row, outletId, brand, date, canManageSelection
               variant="outline"
               disabled={!editor.dirty || editor.saving}
               onClick={editor.handleSave}
-              className={cn(editor.justSaved && 'border-green-500 bg-green-50 text-green-700 hover:bg-green-100')}
+              className={cn(editor.justSaved && 'border-green-500 bg-green-50 text-green-700 hover:bg-green-100 dark:border-green-700 dark:bg-green-950 dark:text-green-300 dark:hover:bg-green-900')}
             >
               Save
             </Button>
@@ -747,7 +747,7 @@ function ReconciliationCard({ row, outletId, brand, date, canManageSelection, ca
             variant="outline"
             disabled={!editor.dirty || editor.saving}
             onClick={editor.handleSave}
-            className={cn('w-full', editor.justSaved && 'border-green-500 bg-green-50 text-green-700 hover:bg-green-100')}
+            className={cn('w-full', editor.justSaved && 'border-green-500 bg-green-50 text-green-700 hover:bg-green-100 dark:border-green-700 dark:bg-green-950 dark:text-green-300 dark:hover:bg-green-900')}
           >
             Save
           </Button>

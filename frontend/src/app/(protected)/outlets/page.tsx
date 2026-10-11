@@ -133,7 +133,7 @@ export default function OutletsPage() {
                             ) : (
                               <span
                                 className={`inline-flex items-center gap-1 ${
-                                  o.growthPercent >= 0 ? 'text-emerald-600' : 'text-red-600'
+                                  o.growthPercent >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'
                                 }`}
                               >
                                 {o.growthPercent >= 0 ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />}

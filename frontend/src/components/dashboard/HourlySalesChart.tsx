@@ -3,6 +3,7 @@
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency, formatCurrencyTooltip } from '@/lib/format';
+import { axisProps, tooltipProps } from './chart-theme';
 
 export function HourlySalesChart({ data }: { data: { hour: number; amount: number }[] }) {
   const formatted = data.map((d) => ({ ...d, label: `${d.hour}:00` }));
@@ -15,10 +16,10 @@ export function HourlySalesChart({ data }: { data: { hour: number; amount: numbe
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={formatted}>
             <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-            <XAxis dataKey="label" fontSize={11} tickLine={false} interval={2} />
-            <YAxis tickFormatter={(v) => formatCurrency(v)} fontSize={12} width={70} />
-            <Tooltip formatter={formatCurrencyTooltip} />
-            <Bar dataKey="amount" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+            <XAxis dataKey="label" fontSize={11} tickLine={false} interval={2} {...axisProps} />
+            <YAxis tickFormatter={(v) => formatCurrency(v)} fontSize={12} width={70} {...axisProps} />
+            <Tooltip formatter={formatCurrencyTooltip} {...tooltipProps} />
+            <Bar dataKey="amount" fill="var(--color-chart-3)" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </CardContent>

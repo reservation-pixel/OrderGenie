@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { ThemeProvider } from 'next-themes';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/sonner';
 import { ServiceWorkerRegister } from '@/components/shared/ServiceWorkerRegister';
@@ -21,11 +22,14 @@ export function Providers({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthCacheReset />
-      {children}
-      <Toaster richColors position="top-right" />
-      <ServiceWorkerRegister />
-    </QueryClientProvider>
+    // Outside QueryClientProvider so Toaster, which reads useTheme, sits inside it.
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+      <QueryClientProvider client={queryClient}>
+        <AuthCacheReset />
+        {children}
+        <Toaster richColors position="top-right" />
+        <ServiceWorkerRegister />
+      </QueryClientProvider>
+    </ThemeProvider>
   );
 }
